@@ -1,0 +1,2016 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Córtex de Control</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Corte transversal de una base neuronal enterrada: superficie arriba, plantas con una sala por agente que se
+   enciende con su color al trabajar, columna de sinapsis (ascensor) en el centro y sala de mando humana al fondo;
+   consola de operación a la derecha. */
+:root{
+  --ground:#090a12; --rock:#0d0f19; --stratum:#121524; --room:#171a2b; --room2:#1d2135;
+  --line:#272b40; --line2:#3a4060;
+  --ink:#eaedf6; --mut:#b0b6cd; --dim:#868da9;
+  --synapse:#7fd1e6; --amber:#f2b84b; --ok:#8bd6a0; --bad:#ef6f6c; --warn:#f2b84b;
+  --c-iris:#5fd4c4; --c-nodo:#79a8ff; --c-tesela:#f0975a; --c-abaco:#b39cff; --c-archivo:#8bd6a0; --c-centinela:#ff6b8b; --c-puente:#f2b84b;
+  --f-disp:"Oxanium","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:12px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--ground)}
+body{color:var(--ink);font:400 15px/1.55 var(--f-body);-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100%;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--ground)}
+#neural{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--synapse);outline-offset:2px}
+code,.mono{font-family:var(--f-mono);font-size:.9em}
+a{color:var(--synapse)}
+kbd{font:600 10.5px var(--f-mono);border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:0 4px;color:var(--mut)}
+.wrap{position:relative;z-index:1;max-width:1380px;margin:0 auto}
+
+/* ---------- arranque ---------- */
+#boot{position:fixed;inset:0;z-index:100;background:var(--ground);display:flex;align-items:center;justify-content:center;transition:opacity .5s,visibility .5s}
+#boot.out{opacity:0;visibility:hidden}
+.boot-box{font:400 13.5px/2 var(--f-mono);color:var(--synapse);padding:0 20px}
+.boot-box b{color:var(--ink);font-family:var(--f-disp);letter-spacing:3px;font-size:16px;display:block;margin-bottom:6px}
+.boot-box div{opacity:0;animation:bin .01s forwards}
+.boot-box div:nth-child(2){animation-delay:.2s}.boot-box div:nth-child(3){animation-delay:.45s}
+.boot-box div:nth-child(4){animation-delay:.7s}.boot-box div:nth-child(5){animation-delay:.95s}.boot-box div:nth-child(6){animation-delay:1.2s}
+@keyframes bin{to{opacity:1}}
+.boot-box .ok{color:var(--ok)}
+
+/* ---------- HUD ---------- */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;
+  padding-block:10px;margin-bottom:12px;background:color-mix(in srgb,var(--ground) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand h1{margin:0;font:700 20px/1 var(--f-disp);letter-spacing:4px;text-transform:uppercase}
+.brand h1 span{color:var(--synapse)}
+.brand small{font:400 12px var(--f-mono);color:var(--dim)}
+.hud-stats{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:8px;padding:3px 9px;
+  font:400 12px var(--f-mono);color:var(--mut);background:var(--stratum);white-space:nowrap}
+.chip b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.leds{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto;align-items:center}
+.led{display:inline-flex;align-items:center;gap:6px;font:400 11.5px var(--f-mono);color:var(--dim);letter-spacing:.5px}
+.led i{width:8px;height:8px;border-radius:50%;background:var(--line2)}
+.led.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.led.warn i{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.led.off i{background:var(--bad)}
+.led.on{color:var(--mut)}
+
+/* ---------- barra de órdenes ---------- */
+.cmd{display:flex;gap:8px;align-items:stretch;margin-bottom:14px;flex-wrap:wrap}
+.cmd label{flex:1 1 300px;display:flex;align-items:center;gap:10px;background:var(--stratum);border:1px solid var(--line2);border-radius:10px;padding:0 12px;min-width:0}
+.cmd label span{font:600 12px var(--f-mono);color:var(--c-nodo);letter-spacing:1px;white-space:nowrap}
+.cmd input{flex:1;min-width:0;background:none;border:0;padding:11px 0;outline:none}
+.btn{border:1px solid var(--line2);background:var(--room);border-radius:9px;padding:9px 14px;font:600 13px var(--f-body);color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--mut)}
+.btn.pri{background:var(--synapse);color:#06121a;border-color:var(--synapse)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.amber{background:var(--amber);color:#1a1205;border-color:var(--amber)}
+.btn.ghost{background:transparent}
+.btn.danger{border-color:color-mix(in srgb,var(--bad) 60%,transparent);color:var(--bad);background:transparent}
+.btn.sm{padding:5px 10px;font-size:12px;border-radius:7px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn[aria-pressed="true"]{border-color:var(--synapse);color:var(--synapse)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 12px;font:600 12px var(--f-mono);color:var(--dim)}
+.seg button[aria-pressed="true"]{background:var(--room2);color:var(--ink)}
+
+/* ---------- layout ---------- */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:16px;align-items:start}
+@media (max-width:1140px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- base en corte ---------- */
+.base{border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;background:var(--rock)}
+.surface{position:relative;height:100px;background:linear-gradient(#141a2e,#0f1222 70%,#2a2030 100%);border-bottom:3px solid #3a2f3a;overflow:hidden;transition:background 2s}
+.surface.day{background:linear-gradient(#2b4a78,#4a6d9c 65%,#3a3440 100%)}
+.surface.dusk{background:linear-gradient(#2a2346,#6b4560 65%,#3a2f3a 100%)}
+.surface .sky{position:absolute;inset:0;background:radial-gradient(1px 1px at 12% 30%,#cfd6ee 50%,transparent 51%),radial-gradient(1px 1px at 38% 18%,#cfd6ee 50%,transparent 51%),radial-gradient(1px 1px at 66% 34%,#cfd6ee 50%,transparent 51%),radial-gradient(1px 1px at 84% 14%,#cfd6ee 50%,transparent 51%),radial-gradient(1px 1px at 92% 40%,#cfd6ee 50%,transparent 51%),radial-gradient(1px 1px at 25% 48%,#cfd6ee 50%,transparent 51%);opacity:.7}
+.surface.day .sky{opacity:0}
+.sun{position:absolute;right:16%;top:22px;width:22px;height:22px;border-radius:50%;background:#f7e1a1;box-shadow:0 0 24px #f7e1a1;opacity:0}
+.surface.day .sun{opacity:.9}.surface.dusk .sun{opacity:.7;top:52px;background:#f2a35e;box-shadow:0 0 24px #f2a35e}
+.hq{position:absolute;left:50%;bottom:0;transform:translateX(-50%);display:flex;align-items:flex-end;gap:3px}
+.hq i{display:block;background:#1d2236;border:1px solid #2e3552;border-bottom:0;
+  background-image:repeating-linear-gradient(90deg,transparent 0 7px,rgba(242,184,75,.55) 7px 10px,transparent 10px 14px),repeating-linear-gradient(transparent 0 9px,#1d2236 9px 14px)}
+.hq i:nth-child(1){width:38px;height:34px}.hq i:nth-child(2){width:74px;height:58px}.hq i:nth-child(3){width:44px;height:42px}
+.antenna{position:absolute;left:calc(50% + 28px);bottom:58px;width:2px;height:14px;background:#3a4060}
+.antenna::after{content:"";position:absolute;top:-4px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--bad);animation:blink 1.6s infinite;box-shadow:0 0 10px var(--bad)}
+@keyframes blink{50%{opacity:.25}}
+.sign{position:absolute;left:50%;bottom:80px;transform:translateX(-50%);font:700 11px var(--f-disp);letter-spacing:4px;color:var(--amber);text-shadow:0 0 10px rgba(242,184,75,.6);white-space:nowrap}
+.surface-l{position:absolute;left:14px;top:10px;font:400 11px var(--f-mono);color:var(--mut);letter-spacing:1px}
+.surface-r{position:absolute;right:14px;top:10px;font:400 11px var(--f-mono);color:var(--mut);text-align:right}
+.door{position:absolute;left:calc(50% - 6px);bottom:0;width:12px;height:18px;background:#0b0d16;border:1px solid #3a4060;border-bottom:0}
+#envelope{position:absolute;left:50%;top:40px;width:22px;height:15px;margin-left:-11px;border-radius:2px;background:var(--c-iris);opacity:0;z-index:6;pointer-events:none;box-shadow:0 0 12px var(--c-iris)}
+#envelope::after{content:"";position:absolute;inset:0;background:linear-gradient(155deg,transparent 48%,#0b0d16 49%,#0b0d16 52%,transparent 53%),linear-gradient(25deg,transparent 48%,#0b0d16 49%,#0b0d16 52%,transparent 53%)}
+
+.floors{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);gap:16px 0;padding:16px 14px 18px;
+  background:radial-gradient(circle at 20% 30%,rgba(127,209,230,.05),transparent 40%),radial-gradient(circle at 80% 70%,rgba(179,156,255,.05),transparent 40%),
+    repeating-linear-gradient(115deg,rgba(255,255,255,.012) 0 2px,transparent 2px 9px),var(--rock)}
+#synapses{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:7;overflow:visible}
+.spine{grid-column:2;grid-row:1 / span 3;position:relative;margin:0 10px}
+.spine::before{content:"";position:absolute;inset:0;border-left:2px solid var(--line2);border-right:2px solid var(--line2);
+  background:repeating-linear-gradient(transparent 0 18px,rgba(127,209,230,.12) 18px 20px)}
+#capsule{position:absolute;left:3px;right:3px;top:0;height:46px;border-radius:6px;background:var(--room2);border:1px solid var(--pk,var(--synapse));
+  box-shadow:0 0 16px -2px var(--pk,var(--synapse));transition:transform 1s cubic-bezier(.5,.05,.3,1),border-color .3s,box-shadow .3s;display:flex;align-items:center;justify-content:center}
+#capsule i{width:10px;height:10px;border-radius:50%;background:var(--pk,var(--synapse));box-shadow:0 0 10px var(--pk,var(--synapse))}
+@media (max-width:720px){
+  .floors{grid-template-columns:20px minmax(0,1fr);padding:14px 10px 16px}
+  .spine{grid-column:1;grid-row:1 / span 7;margin:0 6px 0 0}
+  #capsule{height:34px}
+  .room,.room.wide{grid-column:2 !important;grid-row:auto !important}
+}
+
+/* ---------- salas ---------- */
+.room{position:relative;grid-column:var(--col);grid-row:var(--row);background:var(--room);border:1px solid var(--line2);border-radius:10px;overflow:hidden;
+  transition:border-color .35s,box-shadow .35s;min-width:0}
+.room.wide{grid-column:1 / -1}
+.room.work{border-color:var(--c);box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 40%,transparent),0 0 28px -10px var(--c)}
+.room.alert{border-color:var(--c);animation:apulse 1.8s ease-in-out infinite}
+@keyframes apulse{0%,100%{box-shadow:0 0 0 1px var(--c),0 0 12px -6px var(--c)}50%{box-shadow:0 0 0 1px var(--c),0 0 30px -4px var(--c)}}
+.room::after{content:"";position:absolute;inset:0;border-radius:10px;pointer-events:none;opacity:0;z-index:8;
+  box-shadow:inset 0 0 0 2px var(--c),inset 0 0 70px -12px var(--c)}
+.room.flash::after{animation:rflash .95s ease forwards}
+@keyframes rflash{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+.room-h{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--room2)}
+.room-h .lvl{font:600 10.5px var(--f-mono);color:var(--dim);letter-spacing:1px}
+.room-h b{font:700 14px var(--f-disp);letter-spacing:2px;color:var(--c)}
+.room-h .lv{font:600 10px var(--f-mono);padding:1px 6px;border-radius:5px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);white-space:nowrap}
+.room-h .role{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.room-h .st{margin-left:auto;font:600 10.5px var(--f-mono);letter-spacing:1px;padding:2px 7px;border-radius:6px;border:1px solid var(--line2);color:var(--dim);white-space:nowrap}
+.room.work .st{color:var(--c);border-color:var(--c)}
+.room.alert .st{color:#120d02;background:var(--c);border-color:var(--c)}
+.stage{position:relative;height:150px;cursor:pointer;filter:brightness(.6) saturate(.65);transition:filter .6s;
+  background:linear-gradient(transparent 76%,#10121e 76%,#10121e 78%,#1a1d2e 78%),repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 22px),var(--room)}
+.room.work .stage,.room.alert .stage,.room.flash .stage,.stage:hover{filter:none}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;opacity:0;
+  background:radial-gradient(ellipse at 50% 30%,color-mix(in srgb,var(--c) 32%,transparent),transparent 70%)}
+.room.flash .stage::after{animation:rflash .95s ease forwards}
+.ceil{position:absolute;top:0;left:6%;right:6%;height:3px;border-radius:0 0 3px 3px;background:var(--c);opacity:.18;transition:opacity .4s,box-shadow .4s;z-index:2}
+.room.work .ceil,.room.alert .ceil,.room.flash .ceil{opacity:1;box-shadow:0 0 14px 2px var(--c),0 26px 60px -6px color-mix(in srgb,var(--c) 60%,transparent)}
+.lamp{position:absolute;top:0;left:50%;width:70%;height:76%;transform:translateX(-50%);
+  background:radial-gradient(ellipse at top,color-mix(in srgb,var(--c) 18%,transparent),transparent 70%);pointer-events:none;opacity:.35;transition:opacity .5s}
+.room.work .lamp,.room.alert .lamp{opacity:1}
+.floorglow{position:absolute;left:0;right:0;bottom:0;height:24%;background:linear-gradient(to top,color-mix(in srgb,var(--c) 24%,transparent),transparent);opacity:0;transition:opacity .5s;pointer-events:none}
+.room.work .floorglow{opacity:1}
+.screen{position:absolute;top:14px;right:8%;width:84px;height:54px;border-radius:5px;background:#0a0c15;border:1px solid var(--line2);overflow:hidden;z-index:2}
+.screen .gl{position:absolute;inset:0;font:600 14px/54px var(--f-mono);color:var(--c);text-align:center;text-shadow:0 0 8px var(--c);transition:opacity .3s}
+.screen .rows{position:absolute;inset:6px 6px auto;display:flex;flex-direction:column;gap:4px;opacity:0;transition:opacity .3s}
+.screen .rows i{display:block;height:3px;border-radius:2px;background:var(--c);opacity:.8;transform-origin:left;animation:row 1.4s ease-in-out infinite;animation-play-state:paused}
+.screen .rows i:nth-child(2){animation-delay:.2s;width:70%}.screen .rows i:nth-child(3){animation-delay:.4s;width:85%}.screen .rows i:nth-child(4){animation-delay:.6s;width:55%}.screen .rows i:nth-child(5){animation-delay:.8s;width:78%}.screen .rows i:nth-child(6){animation-delay:1s;width:40%}
+@keyframes row{0%{transform:scaleX(.1)}60%,100%{transform:scaleX(1)}}
+.room.work .screen .rows{opacity:1}.room.work .screen .rows i{animation-play-state:running}.room.work .screen .gl{opacity:.12}
+.screen::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(transparent 0 3px,rgba(0,0,0,.35) 3px 4px)}
+.desk{position:absolute;right:6%;bottom:22%;width:100px;height:12px;background:#2a2f48;border-radius:3px;border-top:2px solid #3a4060;z-index:2}
+.desk::before,.desk::after{content:"";position:absolute;top:12px;width:4px;height:16px;background:#2a2f48}
+.desk::before{left:8px}.desk::after{right:8px}
+.prop{position:absolute;left:8px;top:16px;width:22px;height:70px;border-radius:3px;background:#1a1e30;border:1px solid var(--line2);z-index:2;
+  background-image:repeating-linear-gradient(transparent 0 8px,var(--line2) 8px 9px)}
+.prop::after{content:"";position:absolute;left:4px;top:4px;width:4px;height:4px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);animation:blink 1.1s infinite}
+.room.work .prop::after{animation-duration:.25s}
+.scene{position:absolute;left:38px;top:10px;width:calc(100% - 178px);max-width:250px;pointer-events:none;z-index:1;overflow:visible}
+.scene text{font-family:var(--f-mono);font-size:6px;font-weight:600;fill:#868da9;letter-spacing:.4px}
+.scene .big{font-size:9px;fill:#eaedf6}
+.scene .anim{animation-play-state:paused}
+.room.work .scene .anim,.room.alert .scene .anim{animation-play-state:running}
+.a-msg{animation:msg 3s ease-in-out infinite}
+@keyframes msg{0%{opacity:.3;transform:translateX(-6px)}14%{opacity:1;transform:none}86%{opacity:1}100%{opacity:.3}}
+.a-fly{animation:fly 1.8s ease-in infinite;opacity:0}
+@keyframes fly{0%{transform:translate(96px,30px);opacity:0}15%{opacity:1}100%{transform:translate(200px,2px);opacity:0}}
+.a-wave{animation:wave 1.2s ease-in-out infinite}
+@keyframes wave{0%,100%{opacity:.15}50%{opacity:1}}
+.a-lang{animation:lang 2.5s ease-in-out infinite;opacity:.15}
+@keyframes lang{0%,100%{opacity:.12}30%{opacity:.85}60%{opacity:.12}}
+.a-edge{animation:edge .9s linear infinite}
+@keyframes edge{to{stroke-dashoffset:-16}}
+.a-node{animation:wave 1.6s ease-in-out infinite}
+.a-line{animation:line 4.5s ease-in-out infinite;transform-box:fill-box;transform-origin:left center}
+@keyframes line{0%{transform:scaleX(1)}6%{transform:scaleX(0)}40%,100%{transform:scaleX(1)}}
+.a-stamp{animation:stamp 4.5s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes stamp{0%,70%{opacity:0;transform:scale(2.2)}76%{opacity:1;transform:scale(1)}100%{opacity:1;transform:scale(1)}}
+.a-paper{animation:paper 2.2s ease-in-out infinite}
+@keyframes paper{0%{transform:translateY(-22px)}55%,100%{transform:translateY(0)}}
+.a-blink{animation:wave .7s steps(2) infinite}
+.a-bar{animation:bar 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+@keyframes bar{0%,100%{transform:scaleY(1)}35%{transform:scaleY(.35)}70%{transform:scaleY(1.15)}}
+.a-needle{animation:needle 3.2s ease-in-out infinite;transform-box:view-box;transform-origin:165px 56px}
+@keyframes needle{0%,100%{transform:rotate(0)}25%{transform:rotate(-55deg)}55%{transform:rotate(48deg)}80%{transform:rotate(-12deg)}}
+.a-drawer{animation:drawer 2.6s ease-in-out infinite}
+@keyframes drawer{0%,100%{transform:translateX(0)}25%,55%{transform:translateX(9px)}}
+.a-card{animation:card 2.6s ease-in infinite;opacity:0}
+@keyframes card{0%{transform:translate(170px,6px) scale(1);opacity:0}15%{opacity:1}85%{opacity:1}100%{transform:translate(60px,40px) scale(.5);opacity:0}}
+.a-sweep{animation:sweep 2.4s linear infinite;transform-box:view-box;transform-origin:44px 46px}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.a-term{animation:term 3s linear infinite}
+@keyframes term{to{transform:translateY(-42px)}}
+.bot{position:absolute;bottom:6px;left:14%;width:62px;height:78px;z-index:4;transition:left 1.2s ease}
+.bot-i{width:100%;height:100%;filter:drop-shadow(0 0 10px color-mix(in srgb,var(--c) 45%,transparent))}
+.bot svg{width:100%;height:100%;overflow:visible;display:block}
+.room.idle .bot{animation:walk 10s ease-in-out infinite}
+.room.idle .bot-i{animation:face 10s steps(1) infinite}
+@keyframes walk{0%,8%{left:14%}42%,58%{left:48%}92%,100%{left:14%}}
+@keyframes face{0%{transform:scaleX(1)}46%{transform:scaleX(-1)}96%{transform:scaleX(1)}}
+.room.work .bot,.room.alert .bot{left:calc(94% - 100px)}
+.room.work .bot-i{animation:type .35s ease-in-out infinite alternate}
+@keyframes type{to{transform:translateY(-3px)}}
+.spark{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);pointer-events:none;z-index:9;animation:spark .85s ease-out forwards}
+@keyframes spark{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+.bubble{position:absolute;left:38px;right:112px;bottom:6px;max-height:50px;overflow:hidden;z-index:6;pointer-events:none;
+  background:#0a0c15;border:1px solid var(--c);border-radius:8px;padding:5px 8px;font:400 11.5px/1.45 var(--f-mono);color:var(--ink);
+  opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.bubble.on{opacity:1;transform:none}
+.room-f{display:flex;align-items:center;gap:10px;padding:6px 10px;border-top:1px solid var(--line);font:400 11.5px var(--f-mono);color:var(--dim)}
+.room-f .task{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mut)}
+.room-f .task::before{content:"» ";color:var(--dim)}
+.meter{width:56px;height:5px;border-radius:3px;background:var(--line);overflow:hidden;flex:0 0 auto}
+.meter i{display:block;height:100%;background:var(--c);transition:width .4s}
+.room-f .cnt{white-space:nowrap;font-variant-numeric:tabular-nums}
+.iris-ring{transform-origin:40px 28px;animation:ring 3s linear infinite}
+@keyframes ring{to{transform:rotate(360deg)}}
+.orbit{transform-origin:40px 26px;animation:ring 6s linear infinite}
+.room.work .orbit{animation-duration:1.4s}
+.tile{animation:tile 2.4s infinite}
+@keyframes tile{0%,60%,100%{opacity:.35}30%{opacity:1}}
+.bead{animation:bead 3s ease-in-out infinite}
+@keyframes bead{50%{transform:translateX(9px)}}
+.scan{animation:scan 2.2s ease-in-out infinite}
+@keyframes scan{50%{transform:translateX(14px)}}
+.eyes{animation:eyes 4.6s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes eyes{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+.beacon{animation:blink .9s infinite}
+
+/* sala de mando humana */
+.bridge{position:relative;display:grid;grid-template-columns:auto 1fr;gap:14px;padding:12px 14px;align-items:center;min-width:0}
+.op{width:64px;height:78px}
+.bridge-main{min-width:0}
+.bridge-n{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.bridge-n strong{font:700 34px/1 var(--f-disp);color:var(--c-puente);font-variant-numeric:tabular-nums}
+.bridge-n span{color:var(--mut);font-size:13px}
+.bridge-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.bridge-item{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px}
+.bridge-item span.t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- consola ---------- */
+.console{background:var(--stratum);border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;min-width:0}
+@media (min-width:1141px){.console{position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px);max-height:calc(100vh - 84px);display:flex;flex-direction:column}}
+.tabs{display:flex;border-bottom:1px solid var(--line2);background:var(--room);overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:1 0 auto;border:0;background:transparent;padding:11px 10px;font:600 11.5px var(--f-mono);letter-spacing:1px;color:var(--dim);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--synapse)}
+.tabs button .n{display:inline-block;min-width:18px;margin-left:5px;padding:0 5px;border-radius:9px;background:var(--amber);color:#1a1205;font-size:10.5px;text-align:center}
+.tabs button .n:empty{display:none}
+.pane{padding:14px;overflow-y:auto;min-height:0}
+.pane[hidden]{display:none}
+.pane h2{margin:0 0 10px;font:600 13px var(--f-mono);letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+.pane h3{margin:16px 0 8px;font:600 12px var(--f-mono);letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+.empty{border:1px dashed var(--line2);border-radius:10px;padding:16px;color:var(--mut);font-size:13.5px;text-align:center}
+.note{font-size:12.5px;color:var(--dim);line-height:1.5}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.banner{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 11px;border:1px solid color-mix(in srgb,var(--c-iris) 50%,transparent);border-radius:9px;background:color-mix(in srgb,var(--c-iris) 8%,transparent);font-size:13px;margin-bottom:12px}
+
+/* tarjetas de aprobación */
+.ap{border:1px solid var(--line2);border-radius:10px;background:var(--room);margin-bottom:12px;overflow:hidden}
+.ap.focus{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
+.ap-h{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tag{font:600 10.5px var(--f-mono);letter-spacing:1px;padding:2px 7px;border-radius:5px;border:1px solid currentColor;white-space:nowrap}
+.tag.oferta{color:var(--c-tesela)}.tag.contacto{color:var(--c-iris)}.tag.parche{color:var(--c-centinela)}.tag.seguimiento{color:var(--c-iris);border-style:dashed}
+.ap-h b{font-weight:600;font-size:14px;min-width:0}
+.ap-h time{margin-left:auto;font:400 11px var(--f-mono);color:var(--dim)}
+.ap-b{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}
+.kv span{color:var(--dim);font-family:var(--f-mono);font-size:11.5px}
+.kv b{font-weight:500;min-width:0;overflow-wrap:anywhere}
+.flags{display:flex;flex-direction:column;gap:4px}
+.flag{font-size:12.5px;padding:5px 8px;border-radius:7px;border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 9%,transparent)}
+.flag.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,transparent)}
+.flag.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 9%,transparent)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field span{font:600 11px var(--f-mono);color:var(--dim);letter-spacing:.5px}
+.field input,.field select,.field textarea,textarea.body,.crm-ctl input,.crm-ctl select,.item select,.item input{background:var(--ground);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+textarea.body{min-height:170px;font:400 13px/1.55 var(--f-body);resize:vertical}
+.ap-err{font-size:12.5px;color:var(--bad)}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px;border:1px dashed var(--amber);border-radius:8px;font-size:12.5px}
+
+/* CRM */
+.funnel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.funnel div{background:var(--room);border:1px solid var(--line);border-radius:8px;padding:7px 8px;min-width:0}
+.funnel span{display:block;font:600 10px var(--f-mono);color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+.funnel b{font:600 18px var(--f-disp);font-variant-numeric:tabular-nums}
+.funnel small{display:block;font:400 11px var(--f-mono);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crm-ctl{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:8px;margin-bottom:10px}
+.lead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--room);margin-bottom:8px;cursor:pointer}
+.lead:hover{border-color:var(--line2)}
+.lead b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lead .meta{grid-column:1 / -1;display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font:400 11.5px var(--f-mono);color:var(--dim)}
+.stg{font:600 10.5px var(--f-mono);padding:2px 7px;border-radius:5px;background:var(--room2);color:var(--mut);white-space:nowrap;align-self:start}
+.stg.nuevo{color:var(--c-iris)}.stg.cualificado{color:var(--c-nodo)}.stg.oferta{color:var(--c-tesela)}.stg.revision{color:#120d02;background:var(--amber)}
+.stg.enviada,.stg.aprobada{color:var(--ok)}.stg.ganada{color:#06140b;background:var(--ok)}.stg.perdida{color:var(--bad)}
+.ej{font:600 9.5px var(--f-mono);letter-spacing:1px;color:var(--dim);border:1px solid var(--line2);border-radius:4px;padding:0 4px}
+.score{font-variant-numeric:tabular-nums}
+
+/* panel */
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:6px}
+.kpi{background:var(--room);border:1px solid var(--line);border-radius:9px;padding:9px 10px;min-width:0}
+.kpi span{display:block;font:600 10px var(--f-mono);color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+.kpi b{display:block;font:600 21px/1.2 var(--f-disp);font-variant-numeric:tabular-nums}
+.kpi small{font:400 11px var(--f-mono);color:var(--mut)}
+.hbar{display:grid;grid-template-columns:minmax(0,110px) minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12.5px;margin-bottom:6px}
+.hbar > span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mut)}
+.hbar .track{height:9px;border-radius:5px;background:var(--line);overflow:hidden}
+.hbar .track i{display:block;height:100%;border-radius:5px;background:var(--bc,var(--synapse))}
+.hbar b{font:600 11.5px var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.agt{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px}
+.agt b{font:700 12.5px var(--f-disp);letter-spacing:1.5px}
+.agt .xp{grid-column:1 / -1;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.agt .xp i{display:block;height:100%}
+
+/* seguridad */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{font:600 10.5px var(--f-mono);color:var(--dim);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line2);letter-spacing:.5px}
+.tbl td{padding:6px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.scroll-x{overflow-x:auto}
+.sev{font:600 10px var(--f-mono);padding:1px 6px;border-radius:4px;white-space:nowrap}
+.sev.CRITICAL{background:var(--bad);color:#1a0505}.sev.HIGH{color:var(--bad);border:1px solid var(--bad)}
+.sev.MODERATE,.sev.MEDIUM{color:var(--warn);border:1px solid var(--warn)}.sev.LOW{color:var(--mut);border:1px solid var(--line2)}
+.finding{padding:9px 10px;border:1px solid var(--line);border-left:3px solid var(--sevc,var(--line2));border-radius:8px;background:var(--room);margin-bottom:7px}
+.finding .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.finding a{font:600 12px var(--f-mono)}
+.finding p{margin:4px 0 0;font-size:12.5px;color:var(--mut)}
+.pkg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 6px}
+.pkg b{font:600 13px var(--f-mono)}
+
+/* registro */
+.log{font:400 12px/1.65 var(--f-mono)}
+.log div{display:grid;grid-template-columns:44px 80px minmax(0,1fr);gap:6px;padding:2px 0;border-bottom:1px dashed var(--line)}
+.log time{color:var(--dim)}
+.log .a{font-weight:600}
+.log .x{color:var(--mut);overflow-wrap:anywhere}
+.log .ok .x{color:var(--ok)}.log .bad .x{color:var(--bad)}.log .warn .x{color:var(--warn)}
+.logf{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.logf button{border:1px solid var(--line2);background:transparent;border-radius:6px;padding:3px 8px;font:600 10.5px var(--f-mono);color:var(--dim)}
+.logf button[aria-pressed="true"]{color:var(--ink);border-color:var(--fc,var(--synapse))}
+
+/* ajustes */
+.form{display:flex;flex-direction:column;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:460px){.grid2{grid-template-columns:1fr}}
+.conn{display:flex;flex-direction:column;gap:6px}
+.conn div{display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--room)}
+.conn div i{flex:0 0 8px;height:8px;border-radius:50%;margin-top:6px;background:var(--line2)}
+.conn div.on i{background:var(--ok)}.conn div.warn i{background:var(--warn)}.conn div.off i{background:var(--bad)}
+.conn small{display:block;color:var(--dim);font-size:12px}
+.check{display:flex;gap:8px;align-items:center;font-size:13.5px}
+
+/* ---------- modales ---------- */
+.overlay{position:fixed;inset:0;z-index:60;background:rgba(4,5,10,.72);display:flex;align-items:center;justify-content:center;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.overlay[hidden]{display:none}
+.modal{width:min(640px,100%);max-height:100%;overflow-y:auto;background:var(--stratum);border:1px solid var(--mc,var(--line2));border-radius:14px;box-shadow:0 0 50px -12px var(--mc,#000)}
+.m-h{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line2);background:var(--room);position:sticky;top:0;z-index:1}
+.m-h .portrait{width:52px;height:64px;flex:0 0 auto;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--mc) 50%,transparent))}
+.m-h .portrait svg{width:100%;height:100%;overflow:visible}
+.m-h h2{margin:0;font:700 17px var(--f-disp);letter-spacing:2px;color:var(--mc,var(--ink))}
+.m-h p{margin:2px 0 0;font:400 12px var(--f-mono);color:var(--dim)}
+.x{margin-left:auto;width:32px;height:32px;border-radius:8px;border:1px solid var(--line2);background:transparent;color:var(--mut);flex:0 0 auto}
+.m-b{padding:14px;display:flex;flex-direction:column;gap:12px}
+.say{font:400 14px/1.6 var(--f-body);white-space:pre-wrap;background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:12px;min-height:64px}
+.say.thinking{color:var(--dim);font-family:var(--f-mono);font-size:13px}
+.qs{display:flex;flex-wrap:wrap;gap:6px}
+.qs button{border:1px solid var(--line2);background:transparent;border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--mc,var(--ink))}
+.ask{display:flex;gap:8px}
+.ask input{flex:1;min-width:0;background:var(--ground);border:1px solid var(--line2);border-radius:8px;padding:8px 10px}
+.events{font:400 12px/1.6 var(--f-mono);border-left:2px solid var(--line2);padding-left:10px}
+.events div{color:var(--mut)}
+.events time{color:var(--dim);margin-right:6px}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.items{display:flex;flex-direction:column;gap:6px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) 80px 34px;gap:6px}
+.item button{border:1px solid var(--line2);background:transparent;border-radius:8px;color:var(--mut)}
+
+/* toasts */
+#toasts{position:fixed;z-index:80;left:max(16px,env(safe-area-inset-left,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;max-width:min(420px,calc(100vw - 32px))}
+.toast{background:var(--room2);border:1px solid var(--line2);border-left:3px solid var(--tc,var(--synapse));border-radius:9px;padding:9px 12px;font:400 12.5px var(--f-mono);box-shadow:0 10px 30px rgba(0,0,0,.5);animation:tin .25s ease}
+.toast.bad{--tc:var(--bad)}.toast.ok{--tc:var(--ok)}.toast.warn{--tc:var(--warn)}
+@keyframes tin{from{transform:translateY(10px);opacity:0}}
+.foot{margin-top:14px;font:400 11.5px/1.8 var(--f-mono);color:var(--dim);text-align:center}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+</style>
+
+<canvas id="neural" aria-hidden="true"></canvas>
+
+<div id="boot" aria-hidden="true">
+  <div class="boot-box">
+    <b>CÓRTEX · ARRANQUE</b>
+    <div>red neuronal ............... <span class="ok">OK</span></div>
+    <div>6 agentes sintéticos ........ <span class="ok">OK</span></div>
+    <div>iluminación de salas ........ <span class="ok">OK</span></div>
+    <div>puente de mando humano ...... <span class="ok">OK</span></div>
+    <div>conectando IA · CRM · Gmail …</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="hud">
+    <div class="brand"><h1>Córtex<span>·</span><span id="hEmpresa">Control</span></h1><small>orquestador de agentes</small></div>
+    <div class="hud-stats">
+      <span class="chip">LEADS <b id="sLeads">0</b></span>
+      <span class="chip">EN REVISIÓN <b id="sRev">0</b></span>
+      <span class="chip">PIPELINE <b id="sValor">0 €</b></span>
+      <span class="chip">GANADO <b id="sWon">0 €</b></span>
+      <span class="chip">CVE ABIERTAS <b id="sCve">0</b></span>
+    </div>
+    <div class="leds" aria-label="Estado de conexiones">
+      <span class="led" id="ledIA"><i></i>IA</span>
+      <span class="led" id="ledDB"><i></i>CRM</span>
+      <span class="led" id="ledGM"><i></i>GMAIL</span>
+      <span class="led" id="ledSEC"><i></i>AVISOS</span>
+      <button class="btn sm ghost" type="button" id="sndBtn" aria-pressed="false">SONIDO</button>
+    </div>
+  </header>
+
+  <form class="cmd" id="cmdForm" autocomplete="off">
+    <label for="cmdIn"><span>NODO ▸</span><input id="cmdIn" placeholder="Ordena algo: «nuevo lead de Ferralia, 30 lectores, compras@ferralia.example» · «prepara el parche de lodash» · «¿qué está pendiente?»"></label>
+    <button class="btn pri" type="submit" id="cmdBtn">Ejecutar</button>
+    <button class="btn" type="button" id="newLeadBtn">+ Nuevo lead</button>
+    <button class="btn" type="button" id="simBtn" title="Genera un lead ficticio para ver a los agentes trabajar">Simular lead</button>
+    <div class="seg" role="group" aria-label="Autonomía">
+      <button type="button" id="autoSup" aria-pressed="true" title="Los agentes procesan cada lead nuevo solos hasta la revisión humana">SUPERVISADA</button>
+      <button type="button" id="autoMan" aria-pressed="false" title="Cada lead espera a que pulses Procesar">MANUAL</button>
+    </div>
+  </form>
+
+  <div class="layout">
+    <section class="base" aria-label="Base de agentes">
+      <div class="surface" id="surface">
+        <div class="sky"></div><div class="sun"></div>
+        <div class="surface-l">SUPERFICIE · entrada de leads</div>
+        <div class="surface-r" id="clock">--:--</div>
+        <div class="sign" id="hqSign">CONTROL</div>
+        <div class="antenna"></div>
+        <div class="hq"><i></i><i></i><i></i></div>
+        <div class="door"></div>
+        <div id="envelope"></div>
+      </div>
+      <div class="floors" id="floors">
+        <svg id="synapses" aria-hidden="true"></svg>
+        <div class="spine" id="spine"><div id="capsule"><i></i></div></div>
+      </div>
+    </section>
+
+    <aside class="console" aria-label="Consola de operación">
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-pane="bandeja">BANDEJA<span class="n" id="nBandeja"></span></button>
+        <button role="tab" aria-selected="false" data-pane="crm">CRM</button>
+        <button role="tab" aria-selected="false" data-pane="panel">PANEL</button>
+        <button role="tab" aria-selected="false" data-pane="seg">SEGURIDAD<span class="n" id="nSeg"></span></button>
+        <button role="tab" aria-selected="false" data-pane="log">REGISTRO</button>
+        <button role="tab" aria-selected="false" data-pane="aj">AJUSTES</button>
+      </div>
+      <div class="pane" id="p-bandeja"></div>
+      <div class="pane" id="p-crm" hidden></div>
+      <div class="pane" id="p-panel" hidden></div>
+      <div class="pane" id="p-seg" hidden></div>
+      <div class="pane" id="p-log" hidden><h2>Registro de actividad</h2><div class="logf" id="logFilter"></div><div class="log" id="logList"></div></div>
+      <div class="pane" id="p-aj" hidden></div>
+    </aside>
+  </div>
+  <p class="foot">Córtex · los agentes redactan y preparan; ninguna oferta, contacto, seguimiento ni parche sale sin aprobación humana.<br>
+    Atajos: <kbd>/</kbd> orden a NODO · <kbd>N</kbd> nuevo lead · <kbd>S</kbd> simular lead · <kbd>1</kbd>–<kbd>6</kbd> pestañas · clic en una sala para hablar con su agente.<br>
+    Personajes y datos de ejemplo originales. Los registros marcados EJEMPLO son ficticios.</p>
+</div>
+
+<div class="overlay" id="ovAgent" hidden><div class="modal" id="mAgent" role="dialog" aria-modal="true" aria-labelledby="agName"></div></div>
+<div class="overlay" id="ovLead" hidden><div class="modal" id="mLead" role="dialog" aria-modal="true"></div></div>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   CÓRTEX — orquestador de agentes
+   IA: claude.use("sample") · CRM persistente: db · Gmail: mcp · archivos: downloads
+   Todo con modo local de respaldo. La aprobación humana es obligatoria
+   para todo lo que sale hacia fuera.
+   ===================================================================== */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur = n => new Intl.NumberFormat("es-ES", {style:"currency", currency:"EUR", maximumFractionDigits:2}).format(+n || 0);
+const eur0 = n => new Intl.NumberFormat("es-ES", {style:"currency", currency:"EUR", maximumFractionDigits:0}).format(+n || 0);
+const pct = n => (+n || 0).toLocaleString("es-ES", {maximumFractionDigits:1}) + " %";
+const hhmm = t => new Date(t).toLocaleTimeString("es-ES", {hour:"2-digit", minute:"2-digit"});
+const fecha = t => new Date(t).toLocaleString("es-ES", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r => setTimeout(r, REDUCED ? Math.min(ms, 120) : ms));
+const uid = p => p + "-" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
+const clone = o => JSON.parse(JSON.stringify(o ?? null));
+const short = (s, n) => { s = String(s || ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+
+/* ---------------- agentes (personajes originales) ---------------- */
+const AG = {
+  iris:      {name:"ÍRIS", role:"Contacto con clientes", c:"var(--c-iris)", hex:"#5fd4c4", lvl:"N−1·A", row:1, col:1, glyph:"@",
+              desc:"Recibe cada lead, lo cualifica, redacta el primer contacto en el idioma del cliente y prepara los seguimientos.",
+              qs:["¿Qué estás haciendo?","¿Qué datos faltan en los leads?","¿A quién toca hacer seguimiento?"]},
+  nodo:      {name:"NODO", role:"Orquestador", c:"var(--c-nodo)", hex:"#79a8ff", lvl:"N−1·B", row:1, col:3, glyph:"<>",
+              desc:"Decide el camino de cada tarea y asigna el comercial por país, idioma y carga.",
+              qs:["¿Cómo va el flujo?","¿Quién tiene más carga?","¿Qué harías ahora?"]},
+  tesela:    {name:"TESELA", role:"Ofertas y borradores", c:"var(--c-tesela)", hex:"#f0975a", lvl:"N−2·A", row:2, col:1, glyph:"€",
+              desc:"Calcula la oferta con la tarifa oficial y redacta la carta comercial. Nunca inventa precios.",
+              qs:["¿Qué ofertas tienes en curso?","¿Cómo calculas los descuentos?","Resume la última oferta"]},
+  abaco:     {name:"ÁBACO", role:"Margen y riesgo", c:"var(--c-abaco)", hex:"#b39cff", lvl:"N−2·B", row:2, col:3, glyph:"%",
+              desc:"Valida margen, descuento, riesgo país y límite de crédito. Devuelve a TESELA lo que se sale de política.",
+              qs:["¿Hay ofertas con margen bajo?","¿Qué política aplicas?","¿Qué riesgo ves hoy?"]},
+  archivo:   {name:"ARCHIVO", role:"CRM y asignación", c:"var(--c-archivo)", hex:"#8bd6a0", lvl:"N−3·A", row:3, col:1, glyph:"DB",
+              desc:"Registra cada evento en el CRM, asigna el lead al comercial y lo deja listo para revisión.",
+              qs:["¿Cómo está el pipeline?","¿Qué comercial tiene más leads?","¿Qué está sin cerrar?"]},
+  centinela: {name:"CENTINELA", role:"Seguridad y parches", c:"var(--c-centinela)", hex:"#ff6b8b", lvl:"N−3·B", row:3, col:3, glyph:"CVE",
+              desc:"Vigila las dependencias, prioriza vulnerabilidades y prepara los avisos de parche para IT.",
+              qs:["¿Qué es lo más urgente?","¿Qué parches están preparados?","¿Cómo escaneo de verdad?"]},
+  puente:    {name:"PUENTE", role:"Revisión humana", c:"var(--c-puente)", hex:"#f2b84b", lvl:"N−4", row:4, col:"1 / -1", glyph:"OK"}
+};
+const ORDER = ["iris","nodo","tesela","abaco","archivo","centinela"];
+const LANGS = {es:"español", en:"inglés", fr:"francés", it:"italiano", pt:"portugués", de:"alemán"};
+const TABS = ["bandeja","crm","panel","seg","log","aj"];
+const RISK = {ES:"bajo",PT:"bajo",FR:"bajo",IT:"bajo",DE:"bajo",BE:"bajo",CH:"bajo",GB:"bajo",NL:"bajo",US:"bajo",PL:"medio",MX:"medio",BR:"medio"};
+const TERMS = {bajo:"transferencia a 30 días desde factura", medio:"50 % por anticipado y 50 % a la entrega", alto:"pago anticipado"};
+
+function botSVG(k){
+  const c = AG[k].hex, K = "#0b0d16", W = "#dfe5ef";
+  switch(k){
+  case "iris": return `<svg viewBox="0 0 80 100"><ellipse cx="40" cy="96" rx="16" ry="3" fill="#000" opacity=".45"/>
+    <ellipse cx="40" cy="88" rx="11" ry="3" fill="${c}" opacity=".55"/>
+    <path d="M25 58 Q15 64 18 76" stroke="${W}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M55 58 Q65 64 62 76" stroke="${W}" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <rect x="24" y="46" width="32" height="38" rx="15" fill="${W}" stroke="${K}" stroke-width="2.5"/><rect x="31" y="56" width="18" height="9" rx="4.5" fill="${c}"/>
+    <rect x="15" y="20" width="7" height="14" rx="3.5" fill="${c}" stroke="${K}" stroke-width="2"/><rect x="58" y="20" width="7" height="14" rx="3.5" fill="${c}" stroke="${K}" stroke-width="2"/>
+    <path d="M10 21 Q5 27 10 33" stroke="${c}" stroke-width="2" fill="none" class="beacon"/><path d="M70 21 Q75 27 70 33" stroke="${c}" stroke-width="2" fill="none" class="beacon"/>
+    <circle cx="40" cy="28" r="19" fill="${W}" stroke="${K}" stroke-width="2.5"/><circle cx="40" cy="28" r="12.5" fill="${K}"/>
+    <g class="iris-ring"><circle cx="40" cy="28" r="8.5" fill="none" stroke="${c}" stroke-width="2.6" stroke-dasharray="6 3"/></g><circle cx="40" cy="28" r="3.4" fill="${c}"/></svg>`;
+  case "nodo": return `<svg viewBox="0 0 80 100"><ellipse cx="40" cy="96" rx="16" ry="3" fill="#000" opacity=".45"/>
+    <rect x="29" y="80" width="8" height="14" rx="3" fill="${K}"/><rect x="43" y="80" width="8" height="14" rx="3" fill="${K}"/>
+    <path d="M22 50 L58 50 L54 84 L26 84 Z" fill="#1f2a48" stroke="${K}" stroke-width="2.5"/><path d="M32 58 H40 V66 H48 M36 74 H44" stroke="${c}" stroke-width="2" fill="none"/><circle cx="48" cy="58" r="2.2" fill="${c}"/>
+    <path d="M22 54 Q12 60 16 72" stroke="#1f2a48" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M58 54 Q68 60 64 72" stroke="#1f2a48" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <polygon points="40,8 57,17 57,36 40,45 23,36 23,17" fill="${W}" stroke="${K}" stroke-width="2.5"/>
+    <g class="eyes"><rect x="30" y="23" width="7" height="6" rx="2" fill="${c}"/><rect x="43" y="23" width="7" height="6" rx="2" fill="${c}"/></g>
+    <g class="orbit"><ellipse cx="40" cy="26" rx="30" ry="9" fill="none" stroke="${c}" stroke-width="1.2" opacity=".6"/><circle cx="70" cy="26" r="3" fill="${c}"/><circle cx="10" cy="26" r="3" fill="${c}"/><circle cx="40" cy="17" r="2.4" fill="${c}"/></g></svg>`;
+  case "tesela": return `<svg viewBox="0 0 80 100"><ellipse cx="40" cy="96" rx="16" ry="3" fill="#000" opacity=".45"/>
+    <rect x="30" y="82" width="7" height="12" rx="3" fill="${K}"/><rect x="43" y="82" width="7" height="12" rx="3" fill="${K}"/>
+    <rect x="24" y="44" width="32" height="40" rx="6" fill="${W}" stroke="${K}" stroke-width="2.5"/><rect x="30" y="51" width="20" height="26" rx="2" fill="#fff" stroke="${K}" stroke-width="1.5"/>
+    <path d="M33 57 H47 M33 62 H47 M33 67 H43 M33 72 H45" stroke="${c}" stroke-width="1.6"/>
+    <path d="M56 52 Q66 56 64 66" stroke="${W}" stroke-width="6" fill="none" stroke-linecap="round"/><line x1="64" y1="66" x2="70" y2="54" stroke="${c}" stroke-width="3" stroke-linecap="round"/>
+    <path d="M24 52 Q14 58 18 70" stroke="${W}" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <rect x="22" y="4" width="36" height="38" rx="8" fill="${W}" stroke="${K}" stroke-width="2.5"/><rect x="26" y="12" width="28" height="18" rx="3" fill="${K}"/>
+    <rect class="tile" x="28" y="14" width="7" height="6" fill="${c}"/><rect class="tile" style="animation-delay:.4s" x="36.5" y="14" width="7" height="6" fill="${c}"/><rect class="tile" style="animation-delay:.8s" x="45" y="14" width="7" height="6" fill="${c}"/>
+    <rect class="tile" style="animation-delay:1.2s" x="28" y="22" width="7" height="6" fill="${c}"/><rect class="tile" style="animation-delay:1.6s" x="36.5" y="22" width="7" height="6" fill="${c}"/><rect class="tile" style="animation-delay:2s" x="45" y="22" width="7" height="6" fill="${c}"/>
+    <path d="M34 36 H46" stroke="${K}" stroke-width="2" stroke-linecap="round"/></svg>`;
+  case "abaco": return `<svg viewBox="0 0 80 100"><ellipse cx="40" cy="96" rx="18" ry="3" fill="#000" opacity=".45"/>
+    <rect x="26" y="84" width="9" height="10" rx="3" fill="${K}"/><rect x="45" y="84" width="9" height="10" rx="3" fill="${K}"/>
+    <rect x="16" y="46" width="48" height="40" rx="12" fill="#2a2147" stroke="${K}" stroke-width="2.5"/>
+    <line x1="23" y1="56" x2="57" y2="56" stroke="${W}" stroke-width="1.2"/><line x1="23" y1="66" x2="57" y2="66" stroke="${W}" stroke-width="1.2"/><line x1="23" y1="76" x2="57" y2="76" stroke="${W}" stroke-width="1.2"/>
+    <g class="bead"><circle cx="27" cy="56" r="3.2" fill="${c}"/><circle cx="34" cy="56" r="3.2" fill="${c}"/></g><g class="bead" style="animation-delay:.7s"><circle cx="30" cy="66" r="3.2" fill="${c}"/></g><circle cx="52" cy="66" r="3.2" fill="${c}"/>
+    <g class="bead" style="animation-delay:1.4s"><circle cx="27" cy="76" r="3.2" fill="${c}"/><circle cx="34" cy="76" r="3.2" fill="${c}"/><circle cx="41" cy="76" r="3.2" fill="${c}"/></g>
+    <path d="M16 54 Q6 60 10 72" stroke="#2a2147" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M64 54 Q74 60 70 72" stroke="#2a2147" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M14 44 Q14 12 40 12 Q66 12 66 44 Z" fill="${W}" stroke="${K}" stroke-width="2.5"/>
+    <g class="eyes"><circle cx="31" cy="30" r="3" fill="${K}"/><circle cx="49" cy="30" r="3" fill="${K}"/></g>
+    <circle cx="49" cy="30" r="7" fill="none" stroke="${c}" stroke-width="2.2"/><path d="M56 32 Q60 40 58 46" stroke="${c}" stroke-width="1.2" fill="none"/>
+    <path d="M34 38 Q40 41 46 38" stroke="${K}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+  case "archivo": return `<svg viewBox="0 0 80 100"><ellipse cx="40" cy="96" rx="18" ry="3" fill="#000" opacity=".45"/>
+    <rect x="20" y="86" width="40" height="8" rx="4" fill="${K}"/><circle cx="26" cy="90" r="2" fill="#3a4060"/><circle cx="40" cy="90" r="2" fill="#3a4060"/><circle cx="54" cy="90" r="2" fill="#3a4060"/>
+    <rect x="22" y="40" width="36" height="46" rx="4" fill="#24342c" stroke="${K}" stroke-width="2.5"/>
+    <rect x="26" y="45" width="28" height="11" rx="2" fill="#2f4439" stroke="${K}" stroke-width="1.4"/><rect x="36" y="49" width="8" height="2.6" rx="1.3" fill="${c}"/>
+    <rect x="26" y="59" width="28" height="11" rx="2" fill="#2f4439" stroke="${K}" stroke-width="1.4"/><rect x="36" y="63" width="8" height="2.6" rx="1.3" fill="${c}"/>
+    <rect x="26" y="73" width="28" height="10" rx="2" fill="#2f4439" stroke="${K}" stroke-width="1.4"/><rect x="36" y="77" width="8" height="2.6" rx="1.3" fill="${c}"/>
+    <path d="M22 48 Q12 54 16 66" stroke="#24342c" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M58 48 Q68 54 64 66" stroke="#24342c" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <rect x="20" y="8" width="40" height="30" rx="5" fill="${W}" stroke="${K}" stroke-width="2.5"/>
+    <g class="eyes"><rect x="27" y="18" width="10" height="4" rx="2" fill="${c}"/><rect x="43" y="18" width="10" height="4" rx="2" fill="${c}"/></g>
+    <rect x="33" y="28" width="14" height="3" rx="1.5" fill="${K}"/><rect x="38" y="2" width="4" height="7" fill="${K}"/></svg>`;
+  case "centinela": return `<svg viewBox="0 0 80 100"><ellipse cx="40" cy="96" rx="16" ry="3" fill="#000" opacity=".45"/>
+    <rect x="29" y="82" width="8" height="12" rx="3" fill="${K}"/><rect x="43" y="82" width="8" height="12" rx="3" fill="${K}"/>
+    <rect x="24" y="48" width="32" height="36" rx="8" fill="#3a1f2a" stroke="${K}" stroke-width="2.5"/>
+    <path d="M40 54 L48 58 L48 66 Q48 72 40 76 Q32 72 32 66 L32 58 Z" fill="${W}" stroke="${K}" stroke-width="1.6"/><path d="M36 65 L39 68 L45 61" stroke="${c}" stroke-width="2" fill="none"/>
+    <path d="M14 48 Q24 42 28 50 L26 58 Q18 58 14 54 Z" fill="${c}" stroke="${K}" stroke-width="2"/><path d="M66 48 Q56 42 52 50 L54 58 Q62 58 66 54 Z" fill="${c}" stroke="${K}" stroke-width="2"/>
+    <path d="M18 56 Q12 64 18 74" stroke="#3a1f2a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M62 56 Q68 64 62 74" stroke="#3a1f2a" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M20 12 H60 V30 Q60 42 40 47 Q20 42 20 30 Z" fill="${W}" stroke="${K}" stroke-width="2.5"/>
+    <rect x="24" y="21" width="32" height="7" rx="3.5" fill="${K}"/><circle class="scan" cx="31" cy="24.5" r="2.6" fill="${c}"/>
+    <rect x="37" y="4" width="6" height="8" rx="2" fill="${K}"/><circle class="beacon" cx="40" cy="4" r="3" fill="${c}"/></svg>`;
+  case "puente": return `<svg viewBox="0 0 80 100"><ellipse cx="40" cy="96" rx="18" ry="3" fill="#000" opacity=".45"/>
+    <path d="M14 96 Q14 64 40 62 Q66 64 66 96 Z" fill="#2a3150" stroke="${K}" stroke-width="2.5"/><path d="M33 62 L40 74 L47 62" fill="${W}" stroke="${K}" stroke-width="1.5"/>
+    <circle cx="40" cy="38" r="17" fill="#d8b49a" stroke="${K}" stroke-width="2.5"/><path d="M23 36 Q22 18 40 18 Q58 18 57 36 Q52 26 40 26 Q28 26 23 36 Z" fill="#3b2a22" stroke="${K}" stroke-width="2"/>
+    <g class="eyes"><circle cx="34" cy="40" r="2" fill="${K}"/><circle cx="46" cy="40" r="2" fill="${K}"/></g><path d="M35 47 Q40 50 45 47" stroke="${K}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <path d="M21 38 Q20 20 40 19 Q60 20 59 38" stroke="${c}" stroke-width="3" fill="none"/><rect x="17" y="34" width="7" height="11" rx="3" fill="${c}" stroke="${K}" stroke-width="1.6"/>
+    <path d="M20 45 Q22 54 32 52" stroke="${c}" stroke-width="2" fill="none"/><circle cx="33" cy="52" r="2" fill="${c}"/></svg>`;
+  }
+  return "";
+}
+
+/* escenas de trabajo por sala: cada una muestra el oficio del agente y datos vivos */
+function sceneSVG(k){
+  const C = AG[k].hex, B = "#0b0d16", L = "#3a4060";
+  const frame = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="${B}" stroke="${L}"/>`;
+  switch(k){
+  case "iris": return `<svg class="scene" viewBox="0 0 220 90" aria-hidden="true">${frame(1,2,96,72)}<text x="7" y="12">BANDEJA DE ENTRADA</text>
+    ${[0,1,2].map(i => `<g class="anim a-msg" style="animation-delay:${i*.8}s"><rect x="7" y="${17+i*18}" width="84" height="14" rx="2" fill="#1d2135" stroke="${C}" stroke-opacity=".7"/><circle cx="14" cy="${24+i*18}" r="3" fill="${C}"/><text x="21" y="${23.5+i*18}" class="big" style="font-size:6.5px" data-live="iris${i}">—</text><rect x="21" y="${26+i*18}" width="58" height="2" rx="1" fill="${L}"/></g>`).join("")}
+    <g class="anim a-fly"><rect width="14" height="9" rx="1.5" fill="${C}"/><path d="M0 0 L7 5 L14 0" stroke="${B}" stroke-width="1.2" fill="none"/></g>
+    <rect x="106" y="6" width="22" height="38" rx="4" fill="#1d2135" stroke="${L}"/><rect x="109" y="11" width="16" height="22" rx="2" fill="${B}"/><circle cx="117" cy="38" r="2.2" fill="${C}"/>
+    <path class="anim a-wave" d="M133 16 q6 9 0 18" stroke="${C}" stroke-width="1.6" fill="none"/><path class="anim a-wave" style="animation-delay:.3s" d="M138 12 q9 13 0 26" stroke="${C}" stroke-width="1.6" fill="none"/>
+    <text x="148" y="22">SALIENTES</text><text x="148" y="34" class="big" data-live="irisOut">0</text>
+    ${["ES","IT","FR","PT","EN"].map((l,i) => `<g transform="translate(${104+i*22},58)"><rect class="anim a-lang" style="animation-delay:${i*.5}s" width="19" height="11" rx="2" fill="${C}"/><rect width="19" height="11" rx="2" fill="none" stroke="${C}" stroke-opacity=".6"/><text x="4.5" y="8" style="fill:#eaedf6">${l}</text></g>`).join("")}</svg>`;
+  case "nodo": {
+    const N = [[22,48,"IN"],[64,22,""],[64,74,""],[108,48,"NODO"],[152,22,""],[152,74,""],[196,48,"CRM"]];
+    const E = [[0,1],[0,2],[1,3],[2,3],[3,4],[3,5],[4,6],[5,6]];
+    return `<svg class="scene" viewBox="0 0 220 90" aria-hidden="true">${frame(1,2,216,86)}<text x="7" y="12">MAPA DE RUTAS</text><text x="150" y="12" data-live="queue">COLA 0</text>
+    ${E.map(([a,b],i) => `<line x1="${N[a][0]}" y1="${N[a][1]}" x2="${N[b][0]}" y2="${N[b][1]}" stroke="${L}" stroke-width="1.4"/><line class="anim a-edge" style="animation-delay:${i*.11}s" x1="${N[a][0]}" y1="${N[a][1]}" x2="${N[b][0]}" y2="${N[b][1]}" stroke="${C}" stroke-width="1.6" stroke-dasharray="4 4"/>`).join("")}
+    ${N.map(([x,y,t],i) => `<circle cx="${x}" cy="${y}" r="${t ? 8 : 6}" fill="#1d2135" stroke="${C}" stroke-width="1.6"/><circle class="anim a-node" style="animation-delay:${i*.2}s" cx="${x}" cy="${y}" r="${t ? 3.5 : 2.5}" fill="${C}"/>${t ? `<text x="${x - t.length*1.8}" y="${y + 17}">${t}</text>` : ""}`).join("")}</svg>`;
+  }
+  case "tesela": return `<svg class="scene" viewBox="0 0 220 90" aria-hidden="true">
+    <rect x="1" y="2" width="76" height="86" rx="3" fill="#efe9dd" stroke="${L}"/><text x="7" y="12" style="fill:#5a4a3a">OFERTA</text><text x="34" y="12" style="fill:#5a4a3a" data-live="ofref">—</text>
+    <rect x="7" y="16" width="40" height="2" fill="${C}"/>
+    ${[52,60,44,58,38,56,48].map((w,i) => `<rect class="anim a-line" style="animation-delay:${i*.4}s" x="7" y="${23+i*7}" width="${w}" height="2.6" rx="1" fill="#8a7a6a"/>`).join("")}
+    <rect class="anim a-line" style="animation-delay:3s" x="34" y="76" width="38" height="8" rx="1" fill="${C}"/><text x="36" y="82" style="fill:#1a1205;font-size:5.5px" data-live="oftotal">0 €</text>
+    <g class="anim a-stamp" style="opacity:0"><circle cx="58" cy="60" r="10" fill="none" stroke="#c0392b" stroke-width="2"/><text x="51.5" y="62.5" style="fill:#c0392b;font-size:7px">OK</text></g>
+    <g class="anim a-paper"><rect x="114" y="54" width="44" height="32" fill="#efe9dd"/><rect x="119" y="60" width="30" height="2" fill="#8a7a6a"/><rect x="119" y="65" width="24" height="2" fill="#8a7a6a"/><rect x="119" y="70" width="28" height="2" fill="#8a7a6a"/></g>
+    <rect x="100" y="34" width="72" height="26" rx="4" fill="#2a2f48" stroke="${L}"/><rect x="108" y="28" width="56" height="8" rx="1" fill="#1d2135" stroke="${L}"/><rect x="110" y="52" width="52" height="3" fill="${B}"/>
+    <circle class="anim a-blink" cx="164" cy="42" r="2.2" fill="${C}"/><text x="104" y="44">IMPRESORA</text>
+    <text x="180" y="20">UNIDADES</text><text x="180" y="32" class="big" data-live="ofunits">0</text></svg>`;
+  case "abaco": return `<svg class="scene" viewBox="0 0 220 90" aria-hidden="true">${frame(1,2,112,86)}<text x="7" y="12">MARGEN POR OFERTA</text>
+    <line x1="8" y1="34" x2="108" y2="34" stroke="#272b40"/><line x1="8" y1="56" x2="108" y2="56" stroke="#272b40"/><line x1="8" y1="80" x2="108" y2="80" stroke="${L}"/>
+    ${[30,44,24,52,38,46].map((h,i) => `<rect class="anim a-bar" style="animation-delay:${i*.18}s" x="${12+i*16}" y="${80-h}" width="10" height="${h}" rx="1.5" fill="${C}" opacity=".85" data-bar="${i}"/>`).join("")}
+    <line x1="8" y1="50" x2="108" y2="50" stroke="#ef6f6c" stroke-dasharray="3 2"/><text x="84" y="47" style="fill:#ef6f6c">MÍNIMO</text>
+    ${frame(120,2,96,86)}<text x="126" y="12">RIESGO</text>
+    <path d="M135 56 A30 30 0 0 1 195 56" stroke="${L}" stroke-width="6" fill="none"/><path d="M135 56 A30 30 0 0 1 152 30" stroke="#8bd6a0" stroke-width="6" fill="none"/><path d="M178 30 A30 30 0 0 1 195 56" stroke="#ef6f6c" stroke-width="6" fill="none"/>
+    <line class="anim a-needle" x1="165" y1="56" x2="165" y2="31" stroke="#eaedf6" stroke-width="2" stroke-linecap="round"/><circle cx="165" cy="56" r="3" fill="#eaedf6"/>
+    <text x="126" y="72">MARGEN MEDIO</text><text x="126" y="83" class="big" data-live="margen">—</text></svg>`;
+  case "archivo": return `<svg class="scene" viewBox="0 0 220 90" aria-hidden="true">
+    ${[4,50].map((x,c) => `<rect x="${x}" y="6" width="42" height="80" rx="2" fill="#24342c" stroke="${L}"/>${[0,1,2].map(i => `<g class="anim a-drawer" style="animation-delay:${(c*3+i)*.35}s"><rect x="${x+4}" y="${10+i*25}" width="34" height="21" rx="1.5" fill="#2f4439" stroke="${B}"/><rect x="${x+15}" y="${18+i*25}" width="12" height="3" rx="1.5" fill="${C}"/></g>`).join("")}`).join("")}
+    <g class="anim a-card"><rect width="16" height="11" rx="1" fill="#eaedf6"/><rect x="2" y="3" width="10" height="1.6" fill="${C}"/><rect x="2" y="6" width="7" height="1.4" fill="#868da9"/></g>
+    ${[0,1,2].map(i => `<ellipse cx="160" cy="${20+i*16}" rx="24" ry="6" fill="#1d2135" stroke="${C}" stroke-opacity=".8"/><circle class="anim a-blink" style="animation-delay:${i*.25}s" cx="176" cy="${24+i*16}" r="1.6" fill="${C}"/>`).join("")}
+    <ellipse cx="160" cy="68" rx="24" ry="6" fill="#1d2135" stroke="${C}" stroke-opacity=".8"/>
+    <text x="134" y="84" class="big" data-live="fichas">0 fichas</text></svg>`;
+  case "centinela": return `<svg class="scene" viewBox="0 0 220 90" aria-hidden="true">${frame(1,2,86,86)}
+    <circle cx="44" cy="46" r="34" fill="none" stroke="${L}"/><circle cx="44" cy="46" r="22" fill="none" stroke="#272b40"/><circle cx="44" cy="46" r="10" fill="none" stroke="#272b40"/>
+    <line x1="10" y1="46" x2="78" y2="46" stroke="#272b40"/><line x1="44" y1="12" x2="44" y2="80" stroke="#272b40"/>
+    <path class="anim a-sweep" d="M44 46 L44 12 A34 34 0 0 1 72 27 Z" fill="${C}" opacity=".35"/>
+    <circle class="anim a-blink" cx="58" cy="30" r="2.6" fill="${C}"/><circle class="anim a-blink" style="animation-delay:.4s" cx="30" cy="60" r="2.2" fill="${C}"/><circle class="anim a-blink" style="animation-delay:.8s" cx="62" cy="58" r="1.8" fill="#f2b84b"/>
+    ${frame(96,2,120,62)}<text x="102" y="12">osv-scanner · dependencias</text>
+    <clipPath id="clTerm"><rect x="98" y="16" width="116" height="46"/></clipPath>
+    <g clip-path="url(#clTerm)"><g class="anim a-term">${[60,90,40,76,100,52,84,66,30,92,58,80,44,70].map((w,i) => `<rect x="102" y="${19+i*6}" width="${w}" height="2.4" rx="1" fill="${i % 4 === 1 ? C : "#868da9"}" opacity="${i % 4 === 1 ? 1 : .55}"/>`).join("")}</g></g>
+    <rect x="100" y="72" width="11" height="10" rx="2" fill="${C}"/><path d="M102 72 v-4 a3.5 3.5 0 0 1 7 0 v4" stroke="${C}" stroke-width="1.8" fill="none"/>
+    <text x="116" y="80" class="big" data-live="cve">0 CVE abiertas</text></svg>`;
+  }
+  return "";
+}
+
+/* ---------------- estado ---------------- */
+const DEFAULT_CFG = () => ({
+  empresa:"Control", firma:"Equipo comercial de Control", modo:"borrador", emailIT:"", maxDto:10, margenMin:25, validez:30, limiteCredito:25000, diasSeguimiento:3,
+  catalog:[
+    {sku:"CTL-AC200", nombre:"Lector de control de accesos AC200", precio:189, coste:112, unidad:"ud"},
+    {sku:"CTL-PAN8", nombre:"Central de control de 8 puertas", precio:1240, coste:760, unidad:"ud"},
+    {sku:"CTL-CAM4K", nombre:"Cámara IP 4K de exterior", precio:329, coste:198, unidad:"ud"},
+    {sku:"CTL-SW24", nombre:"Switch PoE de 24 puertos", precio:615, coste:420, unidad:"ud"},
+    {sku:"CTL-CLOUD", nombre:"Licencia Control Cloud (puerta/año)", precio:48, coste:9, unidad:"lic."}
+  ],
+  team:[
+    {nombre:"Lucía Ferrer", email:"lucia.ferrer@example.com", paises:["ES"], idiomas:["es"]},
+    {nombre:"Marco Rinaldi", email:"marco.rinaldi@example.com", paises:["IT"], idiomas:["it","es"]},
+    {nombre:"Claire Dubois", email:"claire.dubois@example.com", paises:["FR","BE","CH"], idiomas:["fr","en"]},
+    {nombre:"Tiago Lopes", email:"tiago.lopes@example.com", paises:["PT","BR"], idiomas:["pt","es"]}
+  ]
+});
+const S = {
+  cfg: DEFAULT_CFG(), leads:{}, approvals:{}, log:[],
+  sec:{inventory:[], findings:[], scannedAt:null, source:"", planned:{}},
+  cap:{sample:null, db:null, mcp:null, downloads:null}, aiOff:false, gmailStatus:"unknown",
+  autonomy:"supervisado", synced:false, mode:"arrancando", sound:false, traffic:false, logFilter:"", crmQ:"", crmStage:""
+};
+const AGST = {}; ORDER.concat("puente").forEach(k => AGST[k] = {st:"idle", task:"en espera", done:0, xp:0, tok:0});
+
+/* ---------------- persistencia ---------------- */
+const LSKEY = "cortex-control-v1";
+function persistLocal(){
+  if(S.cap.db) return;
+  try{ localStorage.setItem(LSKEY, JSON.stringify({cfg:S.cfg, leads:S.leads, approvals:S.approvals, sec:S.sec, log:S.log.slice(0,120), stats:statsObj()})); }catch(e){}
+}
+function loadLocal(){
+  try{ const d = JSON.parse(localStorage.getItem(LSKEY) || "null"); if(d){ Object.assign(S, {cfg:{...DEFAULT_CFG(), ...d.cfg}, leads:d.leads||{}, approvals:d.approvals||{}, sec:d.sec||S.sec, log:d.log||[]}); mergeStats(d.stats); return true; } }catch(e){}
+  return false;
+}
+const WQ = new Map();
+function saveDoc(path, data){
+  if(!S.cap.db){ persistLocal(); return; }
+  const e = WQ.get(path) || {running:false, pending:null, del:false};
+  e.pending = clone(data); e.del = false; WQ.set(path, e);
+  if(!e.running) flush(path);
+}
+function delDoc(path){
+  if(!S.cap.db){ persistLocal(); return; }
+  const e = WQ.get(path) || {running:false, pending:null};
+  e.pending = null; e.del = true; WQ.set(path, e);
+  if(!e.running) flush(path);
+}
+async function flush(path){
+  const e = WQ.get(path); e.running = true;
+  while(e.pending || e.del){
+    const d = e.pending, del = e.del; e.pending = null; e.del = false;
+    try{ del ? await S.cap.db.doc(path).delete() : await S.cap.db.doc(path).set(d); }
+    catch(err){
+      if(err && err.code === "unavailable" && d){ await sleep(400 + Math.random()*600); try{ await S.cap.db.doc(path).set(d); continue; }catch(e2){ err = e2; } }
+      dbError(err, path);
+    }
+  }
+  e.running = false;
+}
+function dbError(err, path){
+  const code = err && err.code;
+  const msg = code === "quota_exceeded" ? "El CRM está lleno: elimina leads antiguos para seguir guardando."
+    : code === "invalid_argument" ? "No tienes permiso para guardar en este CRM (solo lectura)."
+    : code === "revoked" ? "Se ha retirado el acceso al CRM en esta vista."
+    : "No se pudo guardar " + path + " (" + (code || "error") + ").";
+  toast(msg, "bad"); addLog("archivo", msg, "bad", true);
+}
+const saveLead = L => saveDoc("leads/" + L.id, L);
+const saveAp = A => saveDoc("approvals/" + A.id, A);
+const saveCfg = () => saveDoc("config/main", S.cfg);
+const saveSec = () => saveDoc("security/main", S.sec);
+let logT = null, statT = null;
+function addLog(a, x, c = "", noSave){
+  S.log.unshift({id:uid("E"), t:Date.now(), a, x, c});
+  if(S.log.length > 200) S.log.length = 200;
+  renderLog();
+  if(noSave) return;
+  clearTimeout(logT); logT = setTimeout(() => saveDoc("log/main", {entries:S.log}), 1500);
+}
+function statsObj(){ const o = {}; ORDER.concat("puente").forEach(k => o[k] = {done:AGST[k].done, xp:AGST[k].xp}); return o; }
+function mergeStats(o){ if(!o) return; for(const k in o){ if(AGST[k]){ AGST[k].done = Math.max(AGST[k].done, +o[k].done || 0); AGST[k].xp = Math.max(AGST[k].xp, +o[k].xp || 0); } } ORDER.concat("puente").forEach(paintLevel); }
+function saveStats(){ clearTimeout(statT); statT = setTimeout(() => saveDoc("stats/agents", statsObj()), 2000); }
+
+/* ---------------- capacidades ---------------- */
+async function useCap(name){
+  try{ return (window.claude && typeof window.claude.use === "function") ? await window.claude.use(name) : null; }catch(e){ return null; }
+}
+async function boot(){
+  buildRooms(); renderAll(); startNeural(); tickClock(); renderLogFilter();
+  setTimeout(() => $("#boot").classList.add("out"), REDUCED ? 200 : 1700);
+  const [sample, db, mcp, downloads] = await Promise.all([useCap("sample"), useCap("db"), useCap("mcp"), useCap("downloads")]);
+  S.cap = {sample, db, mcp, downloads};
+  if(db){ S.mode = "crm"; subscribe(db); }
+  else {
+    S.mode = "local";
+    if(!loadLocal()){ seedExamples(); }
+    addLog("nodo", "Modo local: los datos viven solo en este navegador.", "warn", true);
+    S.synced = true; renderAll();
+  }
+  if(mcp){
+    try{
+      const r = await mcp.listTools("Gmail");
+      const sv = (r.servers || [])[0];
+      S.gmailStatus = !sv ? "missing" : (sv.authStatus === "needs_reauth" ? "reauth" : "ok");
+    }catch(e){ S.gmailStatus = "missing"; }
+  } else S.gmailStatus = "none";
+  updateLeds(); renderSettings();
+  addLog("nodo", "Córtex en línea · IA " + (sample ? "conectada" : "local") + " · CRM " + (db ? "persistente" : "local") + " · Gmail " + (S.gmailStatus === "ok" ? "listo" : "no disponible"), "ok", true);
+  ORDER.forEach((k, i) => setTimeout(() => flashRoom(k), 300 + i * 160));
+}
+function subscribe(db){
+  let got = {leads:false, cfg:false};
+  const ready = () => { if(got.leads && got.cfg && !S.synced){ S.synced = true; renderAll(); } };
+  const err = e => { if(e && e.code !== "unavailable"){ toast("El CRM dejó de responder (" + e.code + "). Recarga la página.", "bad"); } };
+  db.collection("leads").onSnapshot(snap => { const n = {}; snap.docs.forEach(d => { n[d.id] = {...clone(d.data()), id:d.id}; }); S.leads = n; got.leads = true; ready(); renderData(); }, err);
+  db.collection("approvals").onSnapshot(snap => { const n = {}; snap.docs.forEach(d => { n[d.id] = {...clone(d.data()), id:d.id}; }); S.approvals = n; renderData(); }, err);
+  db.doc("config/main").onSnapshot(s => { if(s.exists){ S.cfg = {...DEFAULT_CFG(), ...clone(s.data())}; } got.cfg = true; ready(); renderData(); renderSettings(); }, err);
+  db.doc("security/main").onSnapshot(s => { if(s.exists){ S.sec = {planned:{}, ...clone(s.data())}; } renderData(); }, err);
+  db.doc("stats/agents").onSnapshot(s => { if(s.exists) mergeStats(clone(s.data())); }, err);
+  db.doc("log/main").onSnapshot(s => {
+    if(!s.exists) return;
+    const ids = new Set(S.log.map(e => e.id)); const extra = (s.data().entries || []).filter(e => !ids.has(e.id));
+    if(extra.length){ S.log = S.log.concat(clone(extra)).sort((a,b) => b.t - a.t).slice(0,200); renderLog(); }
+  }, err);
+}
+
+/* ---------------- IA ---------------- */
+async function ai(prompt, {json = false, tier = "default", onText, cache} = {}){
+  const s = S.cap.sample;
+  if(!s || S.aiOff) throw {code:"unavailable"};
+  const opts = {modelTier:tier}; if(onText) opts.onText = onText; if(cache !== undefined) opts.cache = cache;
+  try{ return json ? await s.json(prompt, opts) : (await s(prompt, opts)).text; }
+  catch(e){
+    if(["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(e && e.code)){
+      S.aiOff = true; updateLeds(); addLog("nodo", "IA desactivada en esta vista (" + e.code + "): los agentes usan plantillas locales.", "warn");
+    } else if(e && e.code === "rate_limited"){ toast("Demasiadas peticiones a la IA: espera un momento.", "warn"); }
+    throw e;
+  }
+}
+async function aiOr(fallback, prompt, opts){
+  try{ const r = await ai(prompt, opts); if(r == null || r === "") throw {code:"empty"}; return r; }
+  catch(e){ return fallback(); }
+}
+
+/* ---------------- motor de flujo ---------------- */
+const QUEUE = []; let RUNNING = false;
+function enqueue(id){ if(!QUEUE.includes(id)){ QUEUE.push(id); renderLive(); pump(); } }
+async function pump(){
+  if(RUNNING) return; RUNNING = true;
+  while(QUEUE.length){
+    const id = QUEUE.shift(); renderLive();
+    try{ await runPipeline(id); }
+    catch(e){ console.error(e); addLog("nodo", "El flujo de " + (S.leads[id]?.empresa || id) + " se detuvo: " + (e.message || e.code || e), "bad"); ORDER.forEach(k => setAgent(k, "idle", "en espera")); }
+  }
+  RUNNING = false; renderLive();
+}
+function ev(L, a, x){ (L.events = L.events || []).push({t:Date.now(), a, x}); }
+function itemsOf(L){
+  if(Array.isArray(L.items) && L.items.length) return L.items.filter(i => i && i.sku && +i.qty > 0);
+  return [{sku:L.sku || S.cfg.catalog[0].sku, qty:+L.cantidad || 1}];
+}
+
+async function runPipeline(id){
+  let L = S.leads[id]; if(!L) return;
+  await arrive();
+  /* 1 · ÍRIS cualifica */
+  setAgent("iris", "work", "Cualificando " + L.empresa);
+  bubble("iris", "Leyendo la petición de " + L.empresa + "…");
+  const q = await qualify(L);
+  L = S.leads[id]; if(!L) return;
+  L.cual = q;
+  if(!(L.items && L.items.length)){ if(q.sku && !L.skuFijo) L.sku = L.sku || q.sku; if(!L.cantidad && q.cantidad) L.cantidad = q.cantidad; }
+  if(q.idioma && LANGS[q.idioma] && !L.idiomaFijo) L.idioma = q.idioma;
+  L.stage = "cualificado"; ev(L, "ÍRIS", "Cualificado " + q.puntuacion + "/100 · " + q.resumen);
+  saveLead(L); addLog("iris", L.empresa + " cualificado " + q.puntuacion + "/100 · urgencia " + q.urgencia);
+  bubble("iris", q.resumen); flashRoom("iris");
+  if(L.primerContacto && !L.contactoHecho){
+    bubble("iris", "Redactando el primer contacto en " + (LANGS[L.idioma] || "español") + "…");
+    const body = await draftContact(L, q, t => bubble("iris", t, 0));
+    createApproval({tipo:"contacto", leadId:L.id, para:L.email, asunto:contactSubject(L), cuerpo:body, agente:"iris",
+      titulo:"Primer contacto · " + L.empresa, meta:{Contacto:L.contacto || "—", Idioma:LANGS[L.idioma] || L.idioma, Faltan:(q.faltan || []).join(", ") || "nada"}});
+    L = S.leads[id]; L.contactoHecho = true; ev(L, "ÍRIS", "Primer contacto redactado: pendiente de aprobación"); saveLead(L);
+  }
+  doneAgent("iris");
+  /* 2 · NODO enruta */
+  await handoff("iris", "nodo");
+  setAgent("nodo", "work", "Enrutando " + L.empresa);
+  await sleep(800);
+  const com = route(L);
+  L = S.leads[id]; L.comercial = com ? {nombre:com.nombre, email:com.email} : null;
+  ev(L, "NODO", com ? "Asignado a " + com.nombre + " (" + com.motivo + ")" : "Sin comercial para " + L.pais + ": revisa el equipo en Ajustes");
+  saveLead(L); addLog("nodo", L.empresa + " → " + (com ? com.nombre + " · " + com.motivo : "sin comercial disponible"), com ? "" : "warn");
+  bubble("nodo", com ? "País " + L.pais + ", idioma " + L.idioma + " → " + com.nombre : "No encuentro comercial para " + L.pais);
+  doneAgent("nodo");
+  /* 3 · TESELA calcula */
+  await handoff("nodo", "tesela");
+  setAgent("tesela", "work", "Calculando oferta");
+  let off = buildOffer(L);
+  bubble("tesela", off.lineas.length + " línea" + (off.lineas.length > 1 ? "s" : "") + " · bruto " + eur(off.bruto) + " · dto " + off.dto + "% → " + eur(off.neto));
+  renderLive(off);
+  await sleep(1000);
+  doneAgent("tesela", true);
+  /* 4 · ÁBACO valida */
+  await handoff("tesela", "abaco");
+  setAgent("abaco", "work", "Validando margen y riesgo");
+  await sleep(900);
+  let chk = checkOffer(L, off);
+  if(chk.ajuste != null){
+    bubble("abaco", "Descuento " + off.dto + "% fuera de política. Lo devuelvo a TESELA con " + chk.ajuste + "%.");
+    addLog("abaco", L.empresa + ": descuento " + off.dto + "% > " + S.cfg.maxDto + "% · devuelto a TESELA", "warn");
+    await sleep(1100); doneAgent("abaco", true);
+    await handoff("abaco", "tesela");
+    setAgent("tesela", "work", "Recalculando con " + chk.ajuste + "%");
+    off = buildOffer(L, chk.ajuste); renderLive(off); await sleep(800);
+    await handoff("tesela", "abaco"); setAgent("abaco", "work", "Revalidando");
+    chk = checkOffer(L, off, chk.flags); await sleep(700);
+  }
+  bubble("abaco", "Margen " + pct(off.margen) + " · riesgo " + off.riesgo + " · " + (chk.flags.some(f => f.c === "bad") ? "requiere visto bueno" : "dentro de política"));
+  addLog("abaco", L.empresa + ": margen " + pct(off.margen) + " · riesgo " + off.riesgo + " · " + chk.flags.length + " observaciones", chk.flags.some(f => f.c === "bad") ? "bad" : "ok");
+  doneAgent("abaco");
+  /* 5 · TESELA redacta la carta */
+  await handoff("abaco", "tesela");
+  setAgent("tesela", "work", "Redactando la carta");
+  L = S.leads[id];
+  off.ref = L.oferta?.ref || ("OF-" + new Date().getFullYear() + "-" + L.id.replace(/[^A-Z0-9]/gi, "").slice(-5).toUpperCase());
+  const carta = await writeOffer(L, off, "", t => bubble("tesela", t, 0));
+  L = S.leads[id]; L.oferta = off; L.stage = "oferta"; ev(L, "TESELA", "Oferta " + off.ref + " redactada · " + eur(off.neto)); saveLead(L);
+  addLog("tesela", "Oferta " + off.ref + " para " + L.empresa + " · " + eur(off.neto));
+  doneAgent("tesela");
+  /* 6 · ARCHIVO registra y asigna */
+  await handoff("tesela", "archivo");
+  setAgent("archivo", "work", "Registrando " + L.id);
+  await sleep(900);
+  L = S.leads[id]; L.stage = "revision"; ev(L, "ARCHIVO", "Registrado en CRM y asignado a " + (L.comercial?.nombre || "—") + " · pendiente de revisión"); saveLead(L);
+  bubble("archivo", L.id + " asignado a " + (L.comercial?.nombre || "—"));
+  addLog("archivo", L.empresa + " en revisión · asignado a " + (L.comercial?.nombre || "—"));
+  doneAgent("archivo");
+  /* 7 · PUENTE: revisión humana */
+  await handoff("archivo", "puente");
+  createApproval({tipo:"oferta", leadId:L.id, para:L.email, asunto:offerSubject(L, off), cuerpo:carta, agente:"tesela",
+    titulo:off.ref + " · " + L.empresa,
+    meta:{Comercial:(L.comercial ? L.comercial.nombre : "sin asignar"), Total:eur(off.neto) + " (dto " + off.dto + "%)", Margen:pct(off.margen), Riesgo:off.riesgo + " · " + off.condiciones},
+    flags:chk.flags});
+  toast("Oferta " + off.ref + " lista para tu revisión", "warn");
+}
+
+/* entrada animada */
+async function arrive(){
+  const env = $("#envelope"), sf = $(".surface");
+  if(!env || REDUCED){ await synapse(null, "iris"); return; }
+  env.style.transition = "none"; env.style.opacity = "1"; env.style.transform = "translateY(-30px)";
+  await sleep(30);
+  env.style.transition = "transform .7s ease-in, opacity .3s ease .5s";
+  env.style.transform = "translateY(" + (sf.offsetHeight - 20) + "px)"; env.style.opacity = "0";
+  await sleep(750);
+  await synapse(null, "iris");
+}
+
+/* ---- ÍRIS ---- */
+async function qualify(L){
+  const cat = S.cfg.catalog.map(p => p.sku + ": " + p.nombre).join("; ");
+  const prompt = `Eres ÍRIS, agente de cualificación comercial de la empresa ${S.cfg.empresa}.
+Analiza este lead entrante y responde SOLO con un objeto JSON con esta forma:
+{"resumen": "una frase en español", "idioma": "es|en|fr|it|pt|de", "urgencia": "alta|media|baja", "puntuacion": 0-100, "faltan": ["datos que faltan para ofertar"], "sku": "SKU de la tarifa que mejor encaja o null", "cantidad": número o null}
+Tarifa disponible: ${cat}
+Lead: ${JSON.stringify({empresa:L.empresa, contacto:L.contacto, email:L.email, pais:L.pais, idioma:L.idioma, lineas:itemsOf(L), descuento_pedido:L.dtoPedido, notas:L.notas})}`;
+  const fb = () => {
+    const urg = /urgente|urgent|asap|antes de|cuanto antes|subito|dès que|o mais rápido|sofort/i.test(L.notas || "") ? "alta" : "media";
+    const faltan = []; if(!L.contacto) faltan.push("persona de contacto"); if(!L.email) faltan.push("email");
+    if(!/plazo|fecha|semana|mes|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|entro|avant|até|bis|by /i.test(L.notas || "")) faltan.push("plazo de entrega");
+    const its = itemsOf(L);
+    const p = Math.min(95, 35 + (L.email ? 15 : 0) + 15 + (its.length > 1 ? 10 : 0) + ((L.notas || "").length > 40 ? 10 : 0) + (urg === "alta" ? 10 : 0));
+    const prod = S.cfg.catalog.find(x => x.sku === its[0].sku);
+    return {resumen:its[0].qty + " × " + (prod ? prod.nombre : "producto") + (its.length > 1 ? " y " + (its.length - 1) + " línea(s) más" : "") + " para " + L.empresa + (urg === "alta" ? ", con urgencia" : ""),
+      idioma:L.idioma || "es", urgencia:urg, puntuacion:p, faltan, sku:its[0].sku, cantidad:its[0].qty, local:true};
+  };
+  const r = await aiOr(fb, prompt, {json:true, tier:"quick"});
+  return {resumen:String(r.resumen || fb().resumen).slice(0,220), idioma:String(r.idioma || L.idioma || "es").slice(0,2).toLowerCase(),
+    urgencia:["alta","media","baja"].includes(r.urgencia) ? r.urgencia : "media", puntuacion:Math.max(0, Math.min(100, Math.round(+r.puntuacion || 50))),
+    faltan:Array.isArray(r.faltan) ? r.faltan.map(String).slice(0,5) : [], sku:S.cfg.catalog.some(p => p.sku === r.sku) ? r.sku : (L.sku || null),
+    cantidad:+r.cantidad > 0 ? Math.round(+r.cantidad) : (L.cantidad || null), local:!!r.local};
+}
+function contactSubject(L){
+  const e = S.cfg.empresa, t = {es:"Su consulta a " + e, en:"Your enquiry to " + e, fr:"Votre demande à " + e, it:"La sua richiesta a " + e, pt:"O seu pedido à " + e, de:"Ihre Anfrage an " + e};
+  return t[L.idioma] || t.es;
+}
+async function draftContact(L, q, onText){
+  const prompt = `Eres ÍRIS, del equipo comercial de ${S.cfg.empresa}. Escribe un primer email de contacto en ${LANGS[L.idioma] || "español"} para ${L.contacto || "el responsable"} de ${L.empresa}.
+Objetivo: agradecer la consulta, confirmar que preparamos una oferta formal hoy y pedir, como mucho, los datos que faltan: ${(q.faltan || []).join(", ") || "ninguno (no pidas nada)"}.
+No menciones precios ni plazos que no estén aquí. Contexto del cliente: ${L.notas || "sin notas"}.
+Formato: texto plano sin markdown, 60-110 palabras, saludo y despedida, firma "${S.cfg.firma}". Devuelve solo el cuerpo del email.`;
+  return aiOr(() => contactTemplate(L, q), prompt, {tier:"quick", onText});
+}
+function contactTemplate(L, q){
+  const n = L.contacto || "", f = S.cfg.firma, falt = (q.faltan || []).join(", "), e = S.cfg.empresa;
+  const T = {
+    es:`Hola${n ? " " + n : ""}:\n\nGracias por contactar con ${e}. Hemos recibido su consulta y hoy mismo le enviaremos una oferta formal.${falt ? "\n\nPara afinarla, ¿podría indicarnos " + falt + "?" : ""}\n\nUn saludo,\n${f}`,
+    en:`Hello${n ? " " + n : ""},\n\nThank you for contacting ${e}. We have received your enquiry and will send you a formal quotation today.${falt ? "\n\nTo fine-tune it, could you tell us " + falt + "?" : ""}\n\nBest regards,\n${f}`,
+    it:`Gentile${n ? " " + n : ""},\n\ngrazie per aver contattato ${e}. Abbiamo ricevuto la sua richiesta e le invieremo oggi stesso un'offerta formale.${falt ? "\n\nPer completarla, potrebbe indicarci " + falt + "?" : ""}\n\nCordiali saluti,\n${f}`,
+    fr:`Bonjour${n ? " " + n : ""},\n\nMerci d'avoir contacté ${e}. Nous avons bien reçu votre demande et vous enverrons une offre formelle dès aujourd'hui.${falt ? "\n\nPour l'affiner, pourriez-vous nous préciser " + falt + " ?" : ""}\n\nCordialement,\n${f}`,
+    pt:`Olá${n ? " " + n : ""},\n\nObrigado por contactar a ${e}. Recebemos o seu pedido e enviaremos hoje uma proposta formal.${falt ? "\n\nPara a ajustar, poderia indicar-nos " + falt + "?" : ""}\n\nCom os melhores cumprimentos,\n${f}`,
+    de:`Guten Tag${n ? " " + n : ""},\n\nvielen Dank für Ihre Anfrage an ${e}. Wir senden Ihnen noch heute ein verbindliches Angebot.${falt ? "\n\nKönnten Sie uns dafür noch Folgendes mitteilen: " + falt + "?" : ""}\n\nMit freundlichen Grüßen\n${f}`
+  };
+  return T[L.idioma] || T.en;
+}
+function dueFollowups(){
+  const d = (+S.cfg.diasSeguimiento || 3) * 86400000;
+  return Object.values(S.leads).filter(l => ["aprobada","enviada"].includes(l.stage) && l.enviadaEn && Date.now() - l.enviadaEn > d && !l.seguimientoPend);
+}
+async function prepareFollowup(id){
+  let L = S.leads[id]; if(!L) return;
+  if(L.seguimientoPend){ toast("Ya hay un seguimiento pendiente para " + L.empresa, "warn"); return; }
+  setAgent("iris", "work", "Seguimiento a " + L.empresa);
+  const dias = L.enviadaEn ? Math.max(1, Math.round((Date.now() - L.enviadaEn) / 86400000)) : null;
+  const prompt = `Eres ÍRIS, del equipo comercial de ${S.cfg.empresa}. Escribe en ${LANGS[L.idioma] || "español"} un email breve de seguimiento para ${L.contacto || "el responsable"} de ${L.empresa}, sobre la oferta ${L.oferta?.ref || ""} por ${L.oferta ? eur(L.oferta.neto) : "importe ya enviado"}${dias ? ", enviada hace " + dias + " días" : ""}.
+Objetivo: preguntar si han podido revisarla, ofrecer resolver dudas o ajustar el alcance y proponer una llamada corta. Sin presión, sin cambiar cifras ni inventar condiciones.
+Formato: texto plano sin markdown, 50-90 palabras, firma "${L.comercial ? L.comercial.nombre + " · " + S.cfg.empresa : S.cfg.firma}". Devuelve solo el cuerpo.`;
+  const fb = () => {
+    const f = L.comercial ? L.comercial.nombre + " · " + S.cfg.empresa : S.cfg.firma, n = L.contacto || "", r = L.oferta?.ref || "";
+    const T = {es:`Hola${n ? " " + n : ""}:\n\n¿Ha podido revisar la oferta ${r}? Si necesita ajustar cantidades o resolver cualquier duda, estaremos encantados de ayudarle. ¿Le viene bien una llamada breve esta semana?\n\nUn saludo,\n${f}`,
+      en:`Hello${n ? " " + n : ""},\n\nHave you had a chance to review quotation ${r}? If you would like to adjust quantities or have any questions, we are happy to help. Would a short call this week suit you?\n\nBest regards,\n${f}`,
+      it:`Gentile${n ? " " + n : ""},\n\nha avuto modo di valutare l'offerta ${r}? Se desidera modificare le quantità o chiarire qualche dubbio, siamo a disposizione. Le andrebbe una breve telefonata questa settimana?\n\nCordiali saluti,\n${f}`,
+      fr:`Bonjour${n ? " " + n : ""},\n\nAvez-vous pu examiner l'offre ${r} ? Si vous souhaitez ajuster les quantités ou poser une question, nous sommes à votre disposition. Un court appel cette semaine vous conviendrait-il ?\n\nCordialement,\n${f}`,
+      pt:`Olá${n ? " " + n : ""},\n\nJá teve oportunidade de analisar a proposta ${r}? Se quiser ajustar quantidades ou esclarecer alguma dúvida, estamos ao dispor. Uma chamada breve esta semana seria conveniente?\n\nCom os melhores cumprimentos,\n${f}`};
+    return T[L.idioma] || T.en;
+  };
+  const body = await aiOr(fb, prompt, {tier:"quick", onText:t => bubble("iris", t, 0), cache:false});
+  L = S.leads[id]; L.seguimientoPend = true; ev(L, "ÍRIS", "Seguimiento redactado: pendiente de aprobación"); saveLead(L);
+  createApproval({tipo:"seguimiento", leadId:L.id, para:L.email, asunto:"Re: " + (L.oferta ? offerSubject(L, L.oferta) : contactSubject(L)), cuerpo:body, agente:"iris",
+    titulo:"Seguimiento · " + L.empresa, meta:{Oferta:(L.oferta?.ref || "—") + " · " + (L.oferta ? eur(L.oferta.neto) : ""), Enviada:L.enviadaEn ? fecha(L.enviadaEn) : "—", Seguimientos:String(L.seguimientos || 0)}});
+  addLog("iris", "Seguimiento preparado para " + L.empresa);
+  doneAgent("iris"); await handoff("iris", "puente");
+}
+
+/* ---- NODO ---- */
+function route(L){
+  const team = S.cfg.team || []; if(!team.length) return null;
+  const load = n => Object.values(S.leads).filter(x => x.comercial?.nombre === n && !["ganada","perdida"].includes(x.stage)).length;
+  const byPais = team.filter(t => (t.paises || []).includes(L.pais));
+  const byLang = team.filter(t => (t.idiomas || []).includes(L.idioma));
+  const pool = byPais.length ? byPais : byLang.length ? byLang : team;
+  const motivo = byPais.length ? "país " + L.pais : byLang.length ? "idioma " + L.idioma : "menor carga";
+  const pick = pool.slice().sort((a,b) => load(a.nombre) - load(b.nombre))[0];
+  return {...pick, motivo};
+}
+
+/* ---- TESELA ---- */
+function buildOffer(L, dtoForzado){
+  const cat = S.cfg.catalog;
+  const lineas = itemsOf(L).map(i => { const p = cat.find(x => x.sku === i.sku) || cat[0]; const qty = Math.max(1, Math.round(+i.qty || 1)); return {sku:p.sku, nombre:p.nombre, qty, unidad:p.unidad, precio:p.precio, coste:p.coste, importe:qty * p.precio}; });
+  const bruto = lineas.reduce((s,l) => s + l.importe, 0);
+  const vol = bruto >= 20000 ? 8 : bruto >= 10000 ? 6 : bruto >= 5000 ? 4 : 0;
+  const dto = dtoForzado != null ? dtoForzado : Math.max(vol, +L.dtoPedido || 0);
+  const descuento = Math.round(bruto * dto) / 100, neto = Math.round((bruto - descuento) * 100) / 100;
+  const coste = lineas.reduce((s,l) => s + l.qty * l.coste, 0), margen = neto > 0 ? (neto - coste) / neto * 100 : 0;
+  const riesgo = RISK[L.pais] || "medio";
+  return {lineas, vol, dto, bruto, descuento, neto, coste, margen, pedido:+L.dtoPedido || 0, riesgo, condiciones:TERMS[riesgo]};
+}
+function offerSubject(L, off){
+  const l = off.lineas[0], extra = off.lineas.length > 1 ? " +" + (off.lineas.length - 1) : "";
+  const t = {es:"Oferta ", en:"Quotation ", fr:"Offre ", it:"Offerta ", pt:"Proposta ", de:"Angebot "};
+  return (t[L.idioma] || t.en) + off.ref + " · " + l.nombre + extra;
+}
+function offerData(L, off){
+  return `- Referencia: ${off.ref}
+${off.lineas.map(l => `- ${l.nombre} (${l.sku}) × ${l.qty} ${l.unidad} a ${eur(l.precio)} = ${eur(l.importe)}`).join("\n")}
+- Importe bruto: ${eur(off.bruto)}
+- Descuento aplicado: ${off.dto}% (${eur(off.descuento)})${off.pedido > off.dto ? " — el cliente pidió " + off.pedido + "%, la política permite " + off.dto + "%" : ""}
+- Total neto: ${eur(off.neto)} (impuestos no incluidos)
+- Condiciones de pago: ${off.condiciones}
+- Validez: ${S.cfg.validez} días
+- Comercial de contacto: ${L.comercial ? L.comercial.nombre + " (" + L.comercial.email + ")" : S.cfg.firma}
+- Contexto del cliente: ${L.notas || "sin notas"}`;
+}
+async function writeOffer(L, off, feedback, onText, actual){
+  const datos = offerData(L, off);
+  const prompt = actual
+    ? `Eres TESELA, redactora comercial de ${S.cfg.empresa}. Reescribe este email de oferta en ${LANGS[L.idioma] || "español"} aplicando la indicación del revisor.
+Indicación del revisor: ${feedback}
+Datos que deben mantenerse exactos (no cambies ninguna cifra ni inventes condiciones, plazos o productos):
+${datos}
+Email actual:
+${actual}
+Formato: texto plano sin markdown, firma "${S.cfg.firma}". Devuelve solo el cuerpo del email.`
+    : `Eres TESELA, redactora comercial de ${S.cfg.empresa}. Escribe el cuerpo de un email de oferta en ${LANGS[L.idioma] || "español"} para ${L.contacto || "el responsable de compras"} de ${L.empresa}.
+Datos (no cambies ninguna cifra ni inventes condiciones, plazos o productos que no estén aquí):
+${datos}
+Formato: texto plano sin markdown, 130-200 palabras, saludo, tres párrafos cortos (necesidad del cliente, propuesta con las cifras línea a línea, condiciones y siguiente paso) y la firma "${S.cfg.firma}". Si el descuento pedido no se pudo aplicar, explícalo con tacto. Devuelve solo el cuerpo del email.`;
+  return aiOr(() => offerTemplate(L, off), prompt, {tier:"default", onText, cache:false});
+}
+function offerTemplate(L, off){
+  const n = L.contacto || "", f = S.cfg.firma, c = L.comercial ? L.comercial.nombre + " (" + L.comercial.email + ")" : f;
+  const lines = off.lineas.map(l => `· ${l.qty} ${l.unidad} ${l.nombre} (${l.sku}) × ${eur(l.precio)} = ${eur(l.importe)}`).join("\n");
+  const T = {
+    es:`Hola${n ? " " + n : ""}:\n\nGracias por su interés en ${S.cfg.empresa}. Le enviamos la oferta ${off.ref}:\n\n${lines}\n\nImporte bruto ${eur(off.bruto)}, descuento del ${off.dto}% (${eur(off.descuento)}) y total neto de ${eur(off.neto)}, impuestos no incluidos.${off.pedido > off.dto ? " Hemos aplicado el máximo descuento que permite nuestra política comercial." : ""} Condiciones de pago: ${off.condiciones}. Validez: ${S.cfg.validez} días.\n\nSu comercial de referencia es ${c}, que queda a su disposición para cualquier ajuste.\n\nUn saludo,\n${f}`,
+    en:`Hello${n ? " " + n : ""},\n\nThank you for your interest in ${S.cfg.empresa}. Please find our quotation ${off.ref}:\n\n${lines}\n\nGross ${eur(off.bruto)}, ${off.dto}% discount (${eur(off.descuento)}), net total ${eur(off.neto)}, taxes not included.${off.pedido > off.dto ? " We have applied the maximum discount our commercial policy allows." : ""} Payment terms: ${off.condiciones}. Valid for ${S.cfg.validez} days.\n\nYour account manager is ${c}, available for any adjustment.\n\nBest regards,\n${f}`,
+    it:`Gentile${n ? " " + n : ""},\n\ngrazie per l'interesse verso ${S.cfg.empresa}. Le inviamo l'offerta ${off.ref}:\n\n${lines}\n\nImporto lordo ${eur(off.bruto)}, sconto del ${off.dto}% (${eur(off.descuento)}), totale netto ${eur(off.neto)}, IVA esclusa.${off.pedido > off.dto ? " Abbiamo applicato lo sconto massimo previsto dalla nostra politica commerciale." : ""} Condizioni di pagamento: ${off.condiciones}. Validità: ${S.cfg.validez} giorni.\n\nIl suo referente commerciale è ${c}, a disposizione per qualsiasi modifica.\n\nCordiali saluti,\n${f}`,
+    fr:`Bonjour${n ? " " + n : ""},\n\nMerci de l'intérêt porté à ${S.cfg.empresa}. Voici notre offre ${off.ref} :\n\n${lines}\n\nMontant brut ${eur(off.bruto)}, remise de ${off.dto} % (${eur(off.descuento)}), total net ${eur(off.neto)} HT.${off.pedido > off.dto ? " Nous avons appliqué la remise maximale prévue par notre politique commerciale." : ""} Conditions de paiement : ${off.condiciones}. Offre valable ${S.cfg.validez} jours.\n\nVotre interlocuteur commercial est ${c}, à votre disposition pour tout ajustement.\n\nCordialement,\n${f}`,
+    pt:`Olá${n ? " " + n : ""},\n\nObrigado pelo interesse na ${S.cfg.empresa}. Enviamos a proposta ${off.ref}:\n\n${lines}\n\nValor bruto ${eur(off.bruto)}, desconto de ${off.dto}% (${eur(off.descuento)}), total líquido ${eur(off.neto)}, impostos não incluídos.${off.pedido > off.dto ? " Aplicámos o desconto máximo permitido pela nossa política comercial." : ""} Condições de pagamento: ${off.condiciones}. Validade: ${S.cfg.validez} dias.\n\nO seu gestor comercial é ${c}, disponível para qualquer ajuste.\n\nCom os melhores cumprimentos,\n${f}`
+  };
+  return T[L.idioma] || T.en;
+}
+
+/* ---- ÁBACO ---- */
+function checkOffer(L, off, prev){
+  const flags = prev ? prev.slice() : []; let ajuste = null;
+  const max = Math.max(off.vol, +S.cfg.maxDto || 0);
+  if(off.dto > max){ ajuste = max; flags.push({c:"warn", t:"Descuento pedido " + off.dto + "% supera la política (" + S.cfg.maxDto + "%): ajustado a " + max + "%."}); }
+  if(ajuste == null){
+    if(off.margen < S.cfg.margenMin) flags.push({c:"bad", t:"Margen " + pct(off.margen) + " por debajo del mínimo (" + S.cfg.margenMin + "%): requiere visto bueno de dirección."});
+    else flags.push({c:"ok", t:"Margen " + pct(off.margen) + " y descuento " + off.dto + "% dentro de política."});
+    if(off.neto > (+S.cfg.limiteCredito || Infinity)) flags.push({c:"bad", t:"Importe " + eur0(off.neto) + " supera el límite de crédito (" + eur0(S.cfg.limiteCredito) + "): requiere aprobación financiera."});
+    if(off.riesgo !== "bajo") flags.push({c:"warn", t:"Riesgo país " + off.riesgo + " (" + L.pais + "): condiciones de pago " + off.condiciones + "."});
+    if(!L.comercial) flags.push({c:"bad", t:"Sin comercial asignado."});
+    if((L.cual?.puntuacion ?? 100) < 45) flags.push({c:"warn", t:"Lead poco cualificado (" + L.cual.puntuacion + "/100): confirma el interés antes de enviar."});
+    if((L.cual?.faltan || []).length) flags.push({c:"warn", t:"Faltan datos: " + L.cual.faltan.join(", ") + "."});
+    if(L.cual?.local) flags.push({c:"warn", t:"Cualificación hecha con reglas locales (IA no disponible)."});
+  }
+  return {flags, ajuste};
+}
+
+/* ---- aprobaciones ---- */
+function createApproval(o){
+  const A = {id:uid("AP"), estado:"pendiente", creado:Date.now(), version:1, ...o};
+  S.approvals[A.id] = A; saveAp(A); renderData();
+  setAgent("puente", "alert", "Revisa: " + A.titulo); flashRoom("puente");
+  addLog("puente", "Pendiente de tu aprobación: " + A.titulo, "warn");
+  return A;
+}
+function mcpCopy(e){
+  const c = e && e.code;
+  return c === "needs_reauth" ? "Gmail necesita reconectarse: ve a claude.ai → Ajustes → Conectores."
+    : c === "server_not_connected" ? "Gmail no está conectado: añádelo en claude.ai → Ajustes → Conectores."
+    : c === "selection_required" ? "Tienes varias cuentas de Gmail conectadas: elige una en el aviso de claude.ai."
+    : c === "not_in_manifest" ? "No has permitido Gmail para esta página. Actívalo en el menú Permisos del artefacto."
+    : c === "blocked_by_policy" ? "Tu organización bloquea esta acción de Gmail."
+    : c === "approval_required" ? "Gmail necesita tu permiso: pulsa Aprobar otra vez y acepta el aviso."
+    : c === "tool_error" ? "Gmail rechazó la operación: " + String(e.message || "").slice(0,160)
+    : (c === "server_unavailable" || c === "upstream_error") ? "Gmail no respondió. Puede que el correo se haya creado: revisa Gmail antes de repetir."
+    : "No se pudo usar Gmail (" + (c || "error") + ").";
+}
+async function approve(id, confirmed){
+  const A = S.approvals[id]; if(!A || A.estado !== "pendiente") return;
+  const ta = $("#ap-body-" + id); if(ta) A.cuerpo = ta.value;
+  const toIn = $("#ap-to-" + id); if(toIn) A.para = toIn.value.trim();
+  const sub = $("#ap-sub-" + id); if(sub) A.asunto = sub.value;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(A.para || "")){ A.error = "El destinatario no es un email válido."; renderBandeja(true); return; }
+  const send = S.cfg.modo === "enviar" && S.cap.mcp && S.gmailStatus !== "none";
+  if(send && !confirmed){ A._confirm = true; renderBandeja(true); return; }
+  A._confirm = false; A.error = null; A.estado = "procesando"; renderBandeja(true);
+  let res = null;
+  if(S.cap.mcp){
+    try{
+      const r = await S.cap.mcp.callTool("Gmail", send ? "send_message" : "create_draft", {to:[A.para], subject:A.asunto, body:A.cuerpo});
+      res = r.payload || {};
+    }catch(e){ A.estado = "pendiente"; A.error = mcpCopy(e); saveAp(A); renderBandeja(true); addLog("puente", "Gmail: " + A.error, "bad"); return; }
+  }
+  A.estado = res ? (send ? "enviada" : "borrador") : "aprobada";
+  A.gmail = res ? {id:res.id || null, url:res.viewUrl || null} : null;
+  A.resuelto = Date.now(); delete A._confirm; saveAp(A);
+  const L = A.leadId ? S.leads[A.leadId] : null;
+  const verbo = A.estado === "enviada" ? "enviada" : A.estado === "borrador" ? "borrador creado en Gmail" : "aprobada (copia el texto para enviarlo)";
+  const nombre = {oferta:"Oferta ", contacto:"Primer contacto ", seguimiento:"Seguimiento ", parche:"Parche "}[A.tipo] || "";
+  if(L){
+    if(A.tipo === "oferta"){ L.stage = A.estado === "enviada" ? "enviada" : "aprobada"; L.enviadaEn = Date.now(); }
+    if(A.tipo === "seguimiento"){ L.seguimientoPend = false; L.seguimientos = (L.seguimientos || 0) + 1; L.enviadaEn = Date.now(); }
+    ev(L, "PUENTE", nombre + verbo); saveLead(L);
+  }
+  if(A.tipo === "parche" && A.pkg){ S.sec.planned = S.sec.planned || {}; S.sec.planned[A.pkg] = {t:Date.now(), estado:A.estado, target:A.target || null}; saveSec(); }
+  addLog("puente", A.titulo + " · " + verbo, "ok");
+  toast(A.titulo + ": " + verbo, "ok");
+  gainXP("puente"); flashRoom("puente", true);
+  const back = A.tipo === "parche" ? "centinela" : "iris";
+  pendingCheck(); renderData();
+  await handoff("puente", back);
+  flashRoom(back, true);
+  bubble(back, A.estado === "enviada" ? "Enviado. Lo dejo registrado." : A.estado === "borrador" ? "Borrador listo en Gmail." : "Aprobado. Texto listo para copiar.");
+}
+async function requestChanges(id){
+  const A = S.approvals[id]; if(!A) return;
+  const fb = ($("#ap-fb-" + id)?.value || "").trim(); if(!fb){ $("#ap-fb-" + id)?.focus(); return; }
+  const ta = $("#ap-body-" + id); if(ta) A.cuerpo = ta.value;
+  A.estado = "rehaciendo"; renderBandeja(true);
+  const ag = A.agente || "tesela"; setAgent(ag, "work", "Aplicando tus cambios");
+  await handoff("puente", ag);
+  const L = A.leadId ? S.leads[A.leadId] : null;
+  let nuevo;
+  if(A.tipo === "oferta" && L && L.oferta){ nuevo = await writeOffer(L, L.oferta, fb, t => bubble(ag, t, 0), A.cuerpo); }
+  else {
+    const prompt = `Reescribe este email aplicando la indicación del revisor. Mantén el idioma, todas las cifras, versiones y datos técnicos exactos, sin inventar nada nuevo.
+Indicación: ${fb}
+Email:
+${A.cuerpo}
+Devuelve solo el cuerpo del email, texto plano sin markdown.`;
+    nuevo = await aiOr(() => A.cuerpo + "\n\n[Pendiente de ajustar a mano: " + fb + "]", prompt, {tier:"quick", onText:t => bubble(ag, t, 0), cache:false});
+  }
+  A.historial = (A.historial || []).concat({t:Date.now(), fb, cuerpo:A.cuerpo});
+  A.cuerpo = nuevo; A.version = (A.version || 1) + 1; A.estado = "pendiente"; saveAp(A);
+  addLog(ag, A.titulo + " · versión " + A.version + " tras tus indicaciones");
+  doneAgent(ag); await handoff(ag, "puente"); setAgent("puente", "alert"); renderData(true);
+}
+function reject(id){
+  const A = S.approvals[id]; if(!A) return;
+  A.estado = "rechazada"; A.resuelto = Date.now(); saveAp(A);
+  const L = A.leadId ? S.leads[A.leadId] : null;
+  if(L && A.tipo === "oferta"){ L.stage = "perdida"; ev(L, "PUENTE", "Oferta rechazada en revisión"); saveLead(L); }
+  if(L && A.tipo === "seguimiento"){ L.seguimientoPend = false; saveLead(L); }
+  addLog("puente", "Rechazado: " + A.titulo, "warn"); pendingCheck(); renderData(true);
+}
+function pendingCheck(){
+  const n = Object.values(S.approvals).filter(a => a.estado === "pendiente").length;
+  setAgent("puente", n ? "alert" : "idle", n ? n + " pendiente" + (n > 1 ? "s" : "") : "sin pendientes");
+}
+
+/* ---- CENTINELA ---- */
+function sevRank(s){ return {CRITICAL:4, HIGH:3, MODERATE:2, MEDIUM:2, LOW:1}[String(s || "").toUpperCase()] || 0; }
+function cmpVer(a, b){ const pa = String(a).split(/[.\-+]/).map(x => parseInt(x) || 0), pb = String(b).split(/[.\-+]/).map(x => parseInt(x) || 0); for(let i = 0; i < Math.max(pa.length, pb.length); i++){ if((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0); } return 0; }
+function byPkg(){
+  const g = {};
+  for(const f of S.sec.findings || []){ (g[f.pkg] = g[f.pkg] || {pkg:f.pkg, eco:f.eco, version:f.version, list:[]}).list.push(f); }
+  for(const k in g){ const x = g[k]; x.list.sort((a,b) => sevRank(b.severity) - sevRank(a.severity)); x.max = sevRank(x.list[0].severity);
+    x.target = x.list.map(f => f.fixed).filter(Boolean).sort(cmpVer).pop() || null; }
+  return Object.values(g).sort((a,b) => b.max - a.max);
+}
+function upgradeCmd(eco, name, ver){
+  const e = String(eco).toLowerCase();
+  if(e === "npm") return `npm install ${name}@${ver}`;
+  if(e === "pypi") return `pip install "${name}>=${ver}"`;
+  if(e === "go") return `go get ${name}@v${ver}`;
+  if(e === "maven") return `actualiza ${name} a ${ver} en pom.xml`;
+  if(e === "rubygems") return `bundle update ${name} (>= ${ver})`;
+  if(e === "packagist") return `composer require ${name}:^${ver}`;
+  if(e === "crates.io") return `cargo update -p ${name} --precise ${ver}`;
+  return `actualiza ${name} a ${ver}`;
+}
+async function preparePatch(pkg){
+  const g = byPkg().find(x => x.pkg === pkg); if(!g) return;
+  if(Object.values(S.approvals).some(a => a.tipo === "parche" && a.pkg === pkg && a.estado === "pendiente")){ toast("Ya hay un aviso de parche pendiente para " + pkg, "warn"); openTab("bandeja"); return; }
+  setAgent("centinela", "work", "Preparando parche de " + pkg);
+  const lista = g.list.map(f => `- ${f.id}${f.alias ? " (" + f.alias + ")" : ""} · ${f.severity || "sin severidad"} · ${f.summary} · corregido en ${f.fixed || "?"}`).join("\n");
+  const cmd = g.target ? upgradeCmd(g.eco, g.pkg, g.target) : "sin versión corregida conocida: valorar mitigación";
+  const prompt = `Eres CENTINELA, responsable de seguridad de ${S.cfg.empresa}. Redacta en español un aviso de cambio para el equipo de IT sobre esta dependencia vulnerable.
+Paquete: ${g.pkg} (${g.eco}) versión instalada ${g.version}
+Versión objetivo: ${g.target || "no disponible"}
+Comando: ${cmd}
+Vulnerabilidades:
+${lista}
+Estructura: resumen del riesgo en 2 frases; acción (el comando exacto); plan de prueba en 3 puntos; plan de vuelta atrás en 1 punto; prioridad (alta si hay alguna HIGH o CRITICAL). No inventes CVE, versiones ni impactos que no estén arriba. Texto plano sin markdown, máximo 200 palabras. Devuelve solo el cuerpo.`;
+  const fb = () => `Hola equipo:\n\nCENTINELA ha detectado ${g.list.length} vulnerabilidad${g.list.length > 1 ? "es" : ""} en ${g.pkg} ${g.version} (${g.eco}).\n\n${lista}\n\nACCIÓN\n${cmd}\n\nPRUEBAS\n1. Ejecutar la batería de tests y el arranque en preproducción.\n2. Revisar los flujos que usan ${g.pkg}.\n3. Volver a escanear con osv-scanner y confirmar 0 hallazgos en ${g.pkg}.\n\nVUELTA ATRÁS\nRestaurar el lockfile anterior y redesplegar.\n\nPrioridad: ${g.max >= 3 ? "ALTA" : "media"}.\n\n${S.cfg.firma}`;
+  const body = await aiOr(fb, prompt, {tier:"quick", onText:t => bubble("centinela", t, 0)});
+  createApproval({tipo:"parche", pkg:g.pkg, target:g.target, para:S.cfg.emailIT || "", asunto:`[Parche${g.max >= 3 ? " · prioridad alta" : ""}] ${g.pkg} ${g.version} → ${g.target || "mitigar"}`, cuerpo:body, agente:"centinela",
+    titulo:"Parche · " + g.pkg + " → " + (g.target || "?"), meta:{Paquete:g.pkg + " " + g.version + " (" + g.eco + ")", Objetivo:g.target || "sin versión corregida", Hallazgos:String(g.list.length)},
+    flags:S.cfg.emailIT ? [] : [{c:"bad", t:"Falta el email de IT: escríbelo arriba o configúralo en Ajustes."}]});
+  addLog("centinela", "Aviso de parche preparado para " + g.pkg + " → " + (g.target || "?"), "warn");
+  doneAgent("centinela"); await handoff("centinela", "puente"); openTab("bandeja");
+}
+function markApplied(pkg){
+  const pl = (S.sec.planned || {})[pkg]; const g = byPkg().find(x => x.pkg === pkg);
+  const target = (pl && pl.target) || (g && g.target);
+  S.sec.findings = (S.sec.findings || []).filter(f => f.pkg !== pkg);
+  S.sec.inventory = (S.sec.inventory || []).map(i => i.name === pkg && target ? {...i, version:target} : i);
+  S.sec.planned = S.sec.planned || {}; S.sec.planned[pkg] = {...(pl || {}), estado:"aplicado", aplicado:Date.now()};
+  saveSec(); renderData();
+  setAgent("centinela", "work", pkg + " parcheado"); flashRoom("centinela", true);
+  addLog("centinela", pkg + " actualizado a " + (target || "versión segura") + ": hallazgos cerrados", "ok");
+  bubble("centinela", pkg + " → " + (target || "?") + ". Hallazgos cerrados. Recomiendo reescanear."); doneAgent("centinela");
+}
+function importOsv(text){
+  let j; try{ j = JSON.parse(text); }catch(e){ toast("El archivo no es JSON válido.", "bad"); return; }
+  const inv = [], fin = [];
+  const fixedFor = (v, name) => { let fx = null; for(const a of v.affected || []){ if(a.package && a.package.name && a.package.name.toLowerCase() !== String(name).toLowerCase()) continue; for(const r of a.ranges || []) for(const e of r.events || []) if(e.fixed && (!fx || cmpVer(e.fixed, fx) > 0)) fx = e.fixed; } return fx; };
+  const sevOf = v => (v.database_specific && v.database_specific.severity) || ((v.affected || [])[0]?.ecosystem_specific?.severity) || (v.severity && v.severity[0] ? "CVSS" : "");
+  if(Array.isArray(j.results)){
+    for(const r of j.results) for(const p of r.packages || []){
+      const pk = p.package || {}; inv.push({eco:pk.ecosystem, name:pk.name, version:pk.version});
+      for(const v of p.vulnerabilities || []) fin.push({id:v.id, alias:(v.aliases || []).find(a => a.startsWith("CVE-")) || "", pkg:pk.name, eco:pk.ecosystem, version:pk.version,
+        severity:String(sevOf(v)).toUpperCase(), summary:(v.summary || (v.details || "").slice(0,160)), fixed:fixedFor(v, pk.name), url:"https://osv.dev/vulnerability/" + v.id});
+    }
+  } else if(Array.isArray(j.findings)){ inv.push(...(j.inventory || [])); fin.push(...j.findings); }
+  else { toast("No reconozco el formato. Usa: osv-scanner --format json -r . > informe.json", "bad"); return; }
+  S.sec = {inventory:inv, findings:fin, scannedAt:Date.now(), source:"Importado de osv-scanner (" + fecha(Date.now()) + ")", planned:{}};
+  saveSec(); renderData();
+  setAgent("centinela", "work", "Analizando informe"); flashRoom("centinela", true);
+  addLog("centinela", "Informe importado: " + inv.length + " paquetes, " + fin.length + " vulnerabilidades", fin.length ? "warn" : "ok");
+  bubble("centinela", fin.length ? fin.length + " vulnerabilidades en " + new Set(fin.map(f => f.pkg)).size + " paquetes." : "Informe limpio: 0 vulnerabilidades."); doneAgent("centinela");
+}
+
+/* ---------------- exportaciones ---------------- */
+async function download(filename, data){
+  const d = S.cap.downloads;
+  if(!d){ try{ await navigator.clipboard.writeText(data); toast("Descarga no disponible en esta vista: he copiado el contenido.", "warn"); }catch(e){ toast("Descarga no disponible en esta vista.", "warn"); } return; }
+  try{ await d.save({filename, data}); toast("Archivo listo: " + filename, "ok"); }
+  catch(e){ if(e && e.code === "declined") return; toast(e && e.code === "rate_limited" ? "Ya hay una descarga esperando tu confirmación." : "No se pudo descargar (" + ((e && e.code) || "error") + ").", "bad"); }
+}
+const csvCell = v => { const s = String(v ?? ""); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+const toCSV = rows => "﻿" + rows.map(r => r.map(csvCell).join(";")).join("\r\n");
+function exportCRM(){
+  const rows = [["ID","Empresa","Contacto","Email","País","Idioma","Etapa","Comercial","Puntuación","Oferta","Total neto","Margen %","Descuento %","Riesgo","Creado","Ejemplo"]];
+  Object.values(S.leads).sort((a,b) => (a.creado || 0) - (b.creado || 0)).forEach(l => rows.push([l.id, l.empresa, l.contacto, l.email, l.pais, l.idioma, l.stage, l.comercial?.nombre || "", l.cual?.puntuacion ?? "",
+    l.oferta?.ref || "", l.oferta ? l.oferta.neto.toFixed(2).replace(".", ",") : "", l.oferta ? l.oferta.margen.toFixed(1).replace(".", ",") : "", l.oferta?.dto ?? "", l.oferta?.riesgo || "", l.creado ? new Date(l.creado).toISOString().slice(0,16).replace("T"," ") : "", l.ejemplo ? "sí" : ""]));
+  download("crm-" + S.cfg.empresa.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + new Date().toISOString().slice(0,10) + ".csv", toCSV(rows));
+}
+function exportSec(){
+  const rows = [["Paquete","Versión","Ecosistema","Aviso","CVE","Severidad","Resumen","Corregido en","Estado"]];
+  (S.sec.findings || []).forEach(f => rows.push([f.pkg, f.version, f.eco, f.id, f.alias, f.severity, f.summary, f.fixed, (S.sec.planned || {})[f.pkg]?.estado || "abierto"]));
+  download("seguridad-" + new Date().toISOString().slice(0,10) + ".csv", toCSV(rows));
+}
+function exportOffer(id){
+  const L = S.leads[id]; if(!L || !L.oferta) return; const o = L.oferta;
+  const A = Object.values(S.approvals).filter(a => a.leadId === id && a.tipo === "oferta").sort((a,b) => b.creado - a.creado)[0];
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(o.ref)} · ${esc(L.empresa)}</title>
+<style>body{font:14px/1.5 system-ui,sans-serif;color:#1b1d2a;max-width:760px;margin:40px auto;padding:0 20px}h1{font-size:22px;margin:0}table{width:100%;border-collapse:collapse;margin:18px 0}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}.tot td{font-weight:700;border-top:2px solid #1b1d2a}.meta{color:#555;font-size:13px}pre{white-space:pre-wrap;font:inherit;background:#f6f6f8;padding:14px;border-radius:8px}</style></head><body>
+<h1>${esc(S.cfg.empresa)} · Oferta ${esc(o.ref)}</h1><p class="meta">Cliente: ${esc(L.empresa)}${L.contacto ? " · " + esc(L.contacto) : ""} · ${esc(L.email || "")}<br>Fecha: ${new Date().toLocaleDateString("es-ES")} · Validez: ${S.cfg.validez} días · Comercial: ${esc(L.comercial?.nombre || S.cfg.firma)}</p>
+<table><thead><tr><th>Producto</th><th>SKU</th><th class="n">Cant.</th><th class="n">Precio</th><th class="n">Importe</th></tr></thead><tbody>
+${o.lineas.map(l => `<tr><td>${esc(l.nombre)}</td><td>${esc(l.sku)}</td><td class="n">${l.qty} ${esc(l.unidad)}</td><td class="n">${eur(l.precio)}</td><td class="n">${eur(l.importe)}</td></tr>`).join("")}
+<tr><td colspan="4">Descuento ${o.dto}%</td><td class="n">−${eur(o.descuento)}</td></tr><tr class="tot"><td colspan="4">Total neto (impuestos no incluidos)</td><td class="n">${eur(o.neto)}</td></tr></tbody></table>
+<p><b>Condiciones de pago:</b> ${esc(o.condiciones || "")}</p>${A ? `<h2 style="font-size:16px">Carta</h2><pre>${esc(A.cuerpo)}</pre>` : ""}
+</body></html>`;
+  download(o.ref + ".html", html);
+}
+
+/* ---------------- animación: sinapsis, ascensor, luces ---------------- */
+function roomEl(k){ return $(`.room[data-agent="${k}"]`); }
+function spineX(){ const b = $("#floors").getBoundingClientRect(), r = $("#spine").getBoundingClientRect(); return r.left - b.left + r.width / 2; }
+function centerOf(k){
+  if(!k) return {x:spineX(), y:0};
+  const r = roomEl(k).getBoundingClientRect(), b = $("#floors").getBoundingClientRect();
+  return {x:r.left - b.left + r.width / 2, y:r.top - b.top + Math.min(r.height / 2, 90)};
+}
+function moveCapsule(k, color){
+  const cap = $("#capsule"), sp = $("#spine"); if(!cap || !k || !roomEl(k)) return;
+  const r = roomEl(k).getBoundingClientRect(), s = sp.getBoundingClientRect();
+  const y = Math.max(0, Math.min(s.height - cap.offsetHeight, r.top - s.top + Math.min(r.height / 2, 90) - cap.offsetHeight / 2));
+  cap.style.setProperty("--pk", color || "var(--synapse)");
+  cap.style.transform = "translateY(" + y + "px)";
+}
+function synapse(from, to, colorHex){
+  return new Promise(res => {
+    const svg = $("#synapses"), box = $("#floors").getBoundingClientRect();
+    svg.setAttribute("viewBox", "0 0 " + box.width + " " + box.height);
+    const a = centerOf(from), b = centerOf(to), sx = spineX();
+    const col = colorHex || (from ? AG[from].hex : AG.iris.hex);
+    const d = `M${a.x} ${a.y} L${sx} ${a.y} L${sx} ${b.y} L${b.x} ${b.y}`;
+    const ns = "http://www.w3.org/2000/svg";
+    const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); p.setAttribute("fill", "none"); p.setAttribute("stroke", col);
+    p.setAttribute("stroke-width", "2.4"); p.setAttribute("stroke-linejoin", "round"); p.style.filter = "drop-shadow(0 0 6px " + col + ")";
+    svg.appendChild(p); const len = p.getTotalLength() || 1;
+    p.setAttribute("stroke-dasharray", len); p.setAttribute("stroke-dashoffset", len);
+    const dot = document.createElementNS(ns, "circle"); dot.setAttribute("r", "5"); dot.setAttribute("fill", "#fff"); dot.style.filter = "drop-shadow(0 0 9px " + col + ")";
+    svg.appendChild(dot);
+    moveCapsule(to, col); beep(from || "iris", .5);
+    const dur = REDUCED ? 60 : 950; const t0 = performance.now();
+    function step(t){
+      const k = Math.min(1, (t - t0) / dur), e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2) / 2;
+      const pt = p.getPointAtLength(len * e); dot.setAttribute("cx", pt.x); dot.setAttribute("cy", pt.y);
+      p.setAttribute("stroke-dashoffset", len * (1 - e));
+      if(k < 1) requestAnimationFrame(step);
+      else { dot.remove(); p.style.transition = "opacity .8s"; p.style.opacity = "0"; setTimeout(() => p.remove(), 850); flashRoom(to); res(); }
+    }
+    requestAnimationFrame(step);
+  });
+}
+async function handoff(from, to){ await synapse(from, to); }
+function flashRoom(k, big){
+  const el = roomEl(k); if(!el) return;
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+  clearTimeout(el._ft); el._ft = setTimeout(() => el.classList.remove("flash"), 1000);
+  if(!REDUCED) sparks(k, big ? 16 : 8);
+  beep(k);
+}
+function sparks(k, n){
+  const el = roomEl(k); const host = $(".stage", el) || $(".bridge", el); if(!host) return;
+  const w = host.clientWidth, h = host.clientHeight;
+  const ox = k === "puente" ? 40 : w * .7, oy = k === "puente" ? h / 2 : h * .55;
+  for(let i = 0; i < n; i++){
+    const s = document.createElement("span"); s.className = "spark";
+    const a = Math.random() * Math.PI * 2, r = 30 + Math.random() * 60;
+    s.style.left = ox + "px"; s.style.top = oy + "px"; s.style.setProperty("--dx", Math.cos(a) * r + "px"); s.style.setProperty("--dy", Math.sin(a) * r * .6 + "px");
+    host.appendChild(s); setTimeout(() => s.remove(), 900);
+  }
+}
+
+/* sonido opcional */
+let AC = null; const FREQ = {iris:659, nodo:523, tesela:440, abaco:392, archivo:330, centinela:784, puente:880};
+function beep(k, vol = 1){
+  if(!S.sound || !AC) return;
+  try{ const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime; o.type = "triangle"; o.frequency.value = FREQ[k] || 500;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05 * vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .22);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + .25); }catch(e){}
+}
+
+/* ---------------- estado visual de agentes ---------------- */
+const bubbleT = {};
+function setAgent(k, st, task){
+  const s = AGST[k]; if(!s) return; const was = s.st; s.st = st; s.tok++; if(task) s.task = task;
+  const el = roomEl(k); if(!el) return;
+  el.classList.remove("idle","work","alert"); el.classList.add(st);
+  $(".st", el).textContent = st === "work" ? "TRABAJANDO" : st === "alert" ? "ATENCIÓN" : "EN ESPERA";
+  if(task) $(".task", el).textContent = task;
+  if(st === "work" && was !== "work") flashRoom(k);
+}
+function levelOf(xp){ let l = 1; while(xp >= 5 * l * (l + 1) / 2) l++; const prev = 5 * (l - 1) * l / 2, next = 5 * l * (l + 1) / 2; return {l, p:(xp - prev) / (next - prev)}; }
+function paintLevel(k){
+  const el = roomEl(k); if(!el) return; const {l, p} = levelOf(AGST[k].xp);
+  const lv = $(".lv", el); if(lv) lv.textContent = "NV " + l;
+  $(".meter i", el).style.width = Math.round(p * 100) + "%";
+  $(".cnt", el).textContent = AGST[k].done + " tareas";
+}
+function gainXP(k){
+  const before = levelOf(AGST[k].xp).l; AGST[k].done++; AGST[k].xp++;
+  const after = levelOf(AGST[k].xp).l; paintLevel(k); saveStats();
+  if(after > before){ flashRoom(k, true); setTimeout(() => flashRoom(k, true), 350); toast(AG[k].name + " sube a nivel " + after, "ok"); addLog(k, "Sube a nivel " + after, "ok"); }
+}
+function doneAgent(k, keep){
+  gainXP(k); flashRoom(k);
+  if(!keep){ const tk = AGST[k].tok; setTimeout(() => { if(AGST[k].st === "work" && AGST[k].tok === tk) setAgent(k, "idle", "en espera"); }, 1700); }
+}
+function bubble(k, text, ms = 4200){
+  const el = roomEl(k); if(!el) return; const b = $(".bubble", el); if(!b) return;
+  b.textContent = String(text).slice(-260); b.classList.add("on");
+  clearTimeout(bubbleT[k]); bubbleT[k] = setTimeout(() => b.classList.remove("on"), ms || 9000);
+}
+const QUIPS = {
+  iris:["Bandeja de entrada vigilada.","Respondo en el idioma del cliente.","Primero escucho, luego pregunto."],
+  nodo:["Rutas libres. Cola vacía.","Cada lead, a su comercial.","Todo pasa por esta columna."],
+  tesela:["Tarifa oficial, siempre.","Ninguna cifra inventada.","Las cartas, cortas y claras."],
+  abaco:["El margen no se negocia.","Si se sale de política, vuelve.","Cuento dos veces cada euro."],
+  archivo:["Si no está en el CRM, no pasó.","Cada evento, con su hora.","Cero duplicados."],
+  centinela:["Escaneo las dependencias.","Ningún parche sale sin revisión.","Las CVE no esperan."]
+};
+let quipN = 0;
+function ambient(){
+  if(document.hidden) return;
+  const idle = ORDER.filter(k => AGST[k].st === "idle"); if(!idle.length) return;
+  const k = idle[quipN++ % idle.length]; const q = QUIPS[k]; bubble(k, q[quipN % q.length], 3200);
+}
+
+/* ---------------- construcción de salas ---------------- */
+function buildRooms(){
+  const fl = $("#floors");
+  ORDER.forEach(k => {
+    const a = AG[k];
+    const el = document.createElement("article");
+    el.className = "room idle"; el.dataset.agent = k;
+    el.style.cssText = `--c:${a.c};--row:${a.row};--col:${a.col}`;
+    el.innerHTML = `<header class="room-h"><span class="lvl">${a.lvl}</span><b>${a.name}</b><span class="lv">NV 1</span><span class="role">${a.role}</span><span class="st">EN ESPERA</span></header>
+      <div class="stage" role="button" tabindex="0" aria-label="Hablar con ${a.name}">
+        <div class="ceil"></div><div class="lamp"></div><div class="floorglow"></div><div class="prop"></div>
+        ${sceneSVG(k)}
+        <div class="screen"><span class="gl">${a.glyph}</span><div class="rows"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="desk"></div>
+        <div class="bot"><div class="bot-i">${botSVG(k)}</div></div>
+        <div class="bubble"></div>
+      </div>
+      <footer class="room-f"><span class="task">en espera</span><span class="meter" title="Experiencia hasta el siguiente nivel"><i style="width:0"></i></span><span class="cnt">0 tareas</span></footer>`;
+    const st = $(".stage", el);
+    st.addEventListener("click", () => openAgent(k));
+    st.addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openAgent(k); } });
+    fl.appendChild(el);
+  });
+  const p = document.createElement("article");
+  p.className = "room wide idle"; p.dataset.agent = "puente"; p.style.cssText = "--c:var(--c-puente);--row:4";
+  p.innerHTML = `<header class="room-h"><span class="lvl">N−4</span><b>PUENTE</b><span class="lv">NV 1</span><span class="role">Sala de mando · revisión humana</span><span class="st">EN ESPERA</span></header>
+    <div class="bridge"><div class="op">${botSVG("puente")}</div><div class="bridge-main"><div class="bridge-n"><strong id="bN">0</strong><span id="bTxt">borradores esperan tu decisión</span></div><div class="bridge-list" id="bList"></div></div></div>
+    <footer class="room-f"><span class="task">sin pendientes</span><span class="meter"><i style="width:0"></i></span><span class="cnt">0 tareas</span></footer>`;
+  fl.appendChild(p);
+  setTimeout(() => moveCapsule("iris"), 300);
+}
+
+/* ---------------- render ---------------- */
+let renderQ = false, forceQ = false;
+function renderData(force){ if(force) forceQ = true; if(renderQ) return; renderQ = true; requestAnimationFrame(() => { const f = forceQ; renderQ = false; forceQ = false; renderHud(); renderBandeja(f); renderCRM(); renderPanel(); renderSec(); renderBridge(); renderLive(); }); }
+function renderAll(){ renderData(true); renderLog(); renderSettings(); }
+function setLive(key, txt){ $$(`[data-live="${key}"]`).forEach(e => { if(e.textContent !== txt) e.textContent = txt; }); }
+function renderLive(curOff){
+  const leads = Object.values(S.leads).sort((a,b) => (b.creado || 0) - (a.creado || 0));
+  [0,1,2].forEach(i => setLive("iris" + i, leads[i] ? short(leads[i].empresa, 22) : "—"));
+  setLive("irisOut", String(Object.values(S.approvals).filter(a => ["contacto","seguimiento"].includes(a.tipo)).length));
+  setLive("queue", "COLA " + QUEUE.length + (RUNNING ? " · EN CURSO" : ""));
+  const lastOff = curOff || leads.filter(l => l.oferta).map(l => l.oferta)[0];
+  setLive("ofref", lastOff?.ref || (curOff ? "en curso" : "—")); setLive("oftotal", lastOff ? eur0(lastOff.neto) : "0 €");
+  setLive("ofunits", lastOff ? String(lastOff.lineas.reduce((s,l) => s + l.qty, 0)) : "0");
+  const offs = leads.filter(l => l.oferta);
+  setLive("margen", offs.length ? pct(offs.reduce((s,l) => s + l.oferta.margen, 0) / offs.length) : "—");
+  offs.slice(0,6).forEach((l, i) => { const b = $(`[data-bar="${i}"]`); if(b){ const h = Math.max(6, Math.min(70, l.oferta.margen * 1.4)); b.setAttribute("y", 80 - h); b.setAttribute("height", h); b.setAttribute("fill", l.oferta.margen < S.cfg.margenMin ? "#ef6f6c" : AG.abaco.hex); } });
+  setLive("fichas", leads.length + " ficha" + (leads.length === 1 ? "" : "s"));
+  const open = (S.sec.findings || []).filter(f => !(S.sec.planned || {})[f.pkg]).length;
+  setLive("cve", open + " CVE abierta" + (open === 1 ? "" : "s"));
+}
+function renderHud(){
+  const leads = Object.values(S.leads);
+  $("#hEmpresa").textContent = S.cfg.empresa; $("#hqSign").textContent = String(S.cfg.empresa).toUpperCase();
+  $("#sLeads").textContent = leads.filter(l => !["ganada","perdida"].includes(l.stage)).length;
+  $("#sRev").textContent = leads.filter(l => l.stage === "revision").length;
+  $("#sValor").textContent = eur0(leads.filter(l => ["oferta","revision","aprobada","enviada"].includes(l.stage)).reduce((s,l) => s + (l.oferta?.neto || 0), 0));
+  $("#sWon").textContent = eur0(leads.filter(l => l.stage === "ganada").reduce((s,l) => s + (l.oferta?.neto || 0), 0));
+  const open = (S.sec.findings || []).filter(f => !(S.sec.planned || {})[f.pkg]).length;
+  $("#sCve").textContent = open;
+  const nP = Object.values(S.approvals).filter(a => a.estado === "pendiente").length;
+  $("#nBandeja").textContent = nP || ""; $("#nSeg").textContent = open || "";
+  document.title = (nP ? "(" + nP + ") " : "") + "Córtex de Control";
+  updateLeds();
+}
+function updateLeds(){
+  const set = (id, cls, tip) => { const e = $(id); e.className = "led " + cls; e.title = tip; };
+  set("#ledIA", S.cap.sample && !S.aiOff ? "on" : (S.mode === "arrancando" ? "" : "warn"), S.cap.sample && !S.aiOff ? "IA conectada (tu cuenta de Claude)" : "IA no disponible: plantillas locales");
+  set("#ledDB", S.cap.db ? "on" : (S.mode === "arrancando" ? "" : "warn"), S.cap.db ? "CRM persistente compartido" : "CRM local en este navegador");
+  set("#ledGM", S.gmailStatus === "ok" ? "on" : S.gmailStatus === "unknown" ? "" : "warn", S.gmailStatus === "ok" ? "Gmail conectado" : "Gmail no disponible: aprobar = copiar texto");
+  set("#ledSEC", (S.sec.findings || []).length ? "warn" : (S.sec.scannedAt ? "on" : ""), S.sec.source || "Sin informe de seguridad");
+}
+function renderBridge(){
+  const pend = Object.values(S.approvals).filter(a => a.estado === "pendiente").sort((a,b) => a.creado - b.creado);
+  $("#bN").textContent = pend.length;
+  $("#bTxt").textContent = pend.length === 1 ? "borrador espera tu decisión" : "borradores esperan tu decisión";
+  $("#bList").innerHTML = pend.slice(0,4).map(a => `<div class="bridge-item"><span class="tag ${a.tipo}">${a.tipo.toUpperCase()}</span><span class="t">${esc(a.titulo)}</span><button class="btn sm amber" data-go="${a.id}">Revisar</button></div>`).join("")
+    || `<div class="note">Cuando un agente termine un borrador, aparecerá aquí para que lo apruebes.</div>`;
+  $$("#bList [data-go]").forEach(b => b.onclick = () => { openTab("bandeja"); const c = $("#ap-" + b.dataset.go); if(c){ c.classList.add("focus"); c.scrollIntoView({behavior:"smooth", block:"start"}); setTimeout(() => c.classList.remove("focus"), 2000); } });
+  if(pend.length && AGST.puente.st !== "alert") setAgent("puente", "alert", pend.length + " pendiente" + (pend.length > 1 ? "s" : ""));
+  if(!pend.length && AGST.puente.st === "alert") setAgent("puente", "idle", "sin pendientes");
+}
+
+/* bandeja */
+function renderBandeja(force){
+  const el = $("#p-bandeja");
+  if(!S.synced){ el.innerHTML = `<h2>Bandeja de aprobación</h2><div class="empty">Sincronizando con el CRM…</div>`; return; }
+  const active = document.activeElement && document.activeElement.closest && document.activeElement.closest("#p-bandeja textarea, #p-bandeja input");
+  if(active && !force) return;
+  const all = Object.values(S.approvals).sort((a,b) => b.creado - a.creado);
+  const pend = all.filter(a => ["pendiente","procesando","rehaciendo"].includes(a.estado));
+  const done = all.filter(a => !["pendiente","procesando","rehaciendo"].includes(a.estado)).slice(0,8);
+  const due = dueFollowups();
+  const gmailOk = S.cap.mcp && S.gmailStatus !== "none";
+  const lbl = !gmailOk ? "Aprobar" : S.cfg.modo === "enviar" ? "Aprobar y enviar" : "Aprobar · borrador en Gmail";
+  el.innerHTML = `<h2>Bandeja de aprobación</h2>
+    ${due.length ? `<div class="banner"><b>${due.length}</b> oferta${due.length > 1 ? "s" : ""} sin respuesta desde hace más de ${S.cfg.diasSeguimiento} días. <button class="btn sm" id="fuAll" style="margin-left:auto">ÍRIS prepara los seguimientos</button></div>` : ""}
+    ${pend.length ? "" : `<div class="empty">Nada pendiente. Crea un lead, pulsa <b>Simular lead</b> o <b>Procesar</b> en el CRM y los agentes te traerán aquí los borradores.</div>`}
+    ${pend.map(a => `<article class="ap" id="ap-${a.id}">
+      <div class="ap-h"><span class="tag ${a.tipo}">${a.tipo.toUpperCase()}</span><b>${esc(a.titulo)}</b><time>v${a.version || 1} · ${hhmm(a.creado)}</time></div>
+      <div class="ap-b">
+        <div class="kv">${Object.entries(a.meta || {}).map(([k,v]) => `<span>${esc(k)}</span><b>${esc(v)}</b>`).join("")}</div>
+        ${(a.flags || []).length ? `<div class="flags">${a.flags.map(f => `<div class="flag ${f.c}">${esc(f.t)}</div>`).join("")}</div>` : ""}
+        <label class="field"><span>PARA</span><input id="ap-to-${a.id}" type="email" value="${esc(a.para)}" placeholder="email del destinatario"></label>
+        <label class="field"><span>ASUNTO</span><input id="ap-sub-${a.id}" value="${esc(a.asunto)}"></label>
+        <label class="field"><span>CUERPO (editable)</span><textarea class="body" id="ap-body-${a.id}">${esc(a.cuerpo)}</textarea></label>
+        ${a.error ? `<div class="ap-err">${esc(a.error)}</div>` : ""}
+        ${a._confirm ? `<div class="confirm">Se enviará ahora a <b>${esc(a.para)}</b> desde tu Gmail. <button class="btn sm amber" data-act="send" data-id="${a.id}">Confirmar envío</button><button class="btn sm ghost" data-act="nosend" data-id="${a.id}">Cancelar</button></div>` : ""}
+        ${a.estado === "procesando" ? `<div class="note">Hablando con Gmail…</div>` : a.estado === "rehaciendo" ? `<div class="note">El agente está reescribiendo el borrador…</div>` : `
+        <div class="row-actions"><button class="btn amber" data-act="ok" data-id="${a.id}">${lbl}</button><button class="btn sm ghost" data-act="copy" data-id="${a.id}">Copiar texto</button><button class="btn sm danger" data-act="no" data-id="${a.id}">Rechazar</button></div>
+        <div class="ask"><input id="ap-fb-${a.id}" placeholder="Pedir cambios: «más breve», «menciona la instalación»…"><button class="btn sm" data-act="fb" data-id="${a.id}">Rehacer</button></div>`}
+      </div></article>`).join("")}
+    ${done.length ? `<h3>Resueltas</h3>` + done.map(a => `<div class="lead" style="cursor:default"><b>${esc(a.titulo)}</b><span class="stg ${a.estado === "rechazada" ? "perdida" : "enviada"}">${esc(a.estado)}</span>
+      <div class="meta"><span>${a.tipo}</span><span>${esc(a.para)}</span><span>${a.resuelto ? fecha(a.resuelto) : ""}</span>${a.gmail?.url ? `<a href="${esc(a.gmail.url)}" target="_blank" rel="noopener">abrir en Gmail</a>` : ""}</div></div>`).join("") : ""}`;
+  $("#fuAll")?.addEventListener("click", async () => { for(const l of dueFollowups()) await prepareFollowup(l.id); });
+  $$("#p-bandeja [data-act]").forEach(b => b.onclick = () => {
+    const id = b.dataset.id, A = S.approvals[id];
+    if(b.dataset.act === "ok") approve(id, false);
+    else if(b.dataset.act === "send") approve(id, true);
+    else if(b.dataset.act === "nosend"){ A._confirm = false; renderBandeja(true); }
+    else if(b.dataset.act === "no") reject(id);
+    else if(b.dataset.act === "fb") requestChanges(id);
+    else if(b.dataset.act === "copy") copyText((A.para ? "Para: " + A.para + "\n" : "") + "Asunto: " + ($("#ap-sub-" + id)?.value || A.asunto) + "\n\n" + ($("#ap-body-" + id)?.value || A.cuerpo), $("#ap-body-" + id));
+  });
+  $$("#p-bandeja textarea, #p-bandeja input").forEach(i => i.addEventListener("blur", () => {
+    const m = i.id.match(/^ap-(body|to|sub)-(.+)$/); if(!m) return; const A = S.approvals[m[2]]; if(!A) return;
+    const k = {body:"cuerpo", to:"para", sub:"asunto"}[m[1]]; if(A[k] !== i.value){ A[k] = i.value; saveAp(A); }
+  }));
+}
+async function copyText(t, sel){
+  try{ await navigator.clipboard.writeText(t); toast("Texto copiado", "ok"); }
+  catch(e){ if(sel){ sel.focus(); sel.select(); } toast("Selecciona el texto y cópialo manualmente.", "warn"); }
+}
+
+/* CRM */
+const STAGES = [["nuevo","Nuevo"],["cualificado","Cualificado"],["oferta","Oferta"],["revision","Revisión"],["aprobada","Aprobada"],["enviada","Enviada"],["ganada","Ganada"],["perdida","Perdida"]];
+const stageName = s => (STAGES.find(x => x[0] === s) || [0, s])[1];
+function renderCRM(){
+  const el = $("#p-crm");
+  if(!S.synced){ el.innerHTML = `<h2>CRM</h2><div class="empty">Sincronizando…</div>`; return; }
+  if(!$("#crmList")){
+    el.innerHTML = `<h2>CRM · pipeline comercial</h2><div id="crmTop"></div>
+      <div class="crm-ctl"><input id="crmQ" type="search" placeholder="Buscar empresa, contacto, comercial…" aria-label="Buscar en el CRM"><select id="crmStage" aria-label="Filtrar por etapa"><option value="">Todas las etapas</option>${STAGES.map(([s,t]) => `<option value="${s}">${t}</option>`).join("")}</select></div>
+      <div id="crmList"></div>`;
+    $("#crmQ").addEventListener("input", e => { S.crmQ = e.target.value.toLowerCase(); renderCRM(); });
+    $("#crmStage").addEventListener("change", e => { S.crmStage = e.target.value; renderCRM(); });
+  }
+  const leads = Object.values(S.leads).sort((a,b) => (b.creado || 0) - (a.creado || 0));
+  const cnt = s => leads.filter(l => (Array.isArray(s) ? s : [s]).includes(l.stage));
+  const val = arr => arr.reduce((s,l) => s + (l.oferta?.neto || 0), 0);
+  const nuevos = cnt("nuevo");
+  $("#crmTop").innerHTML = `<div class="funnel">${[["nuevo","Nuevos"],["revision","Revisión"],[["aprobada","enviada"],"Aprobadas"],["ganada","Ganadas"]].map(([s,t]) => `<div><span>${t}</span><b>${cnt(s).length}</b><small>${eur0(val(cnt(s)))}</small></div>`).join("")}</div>
+    <div class="row-actions" style="margin-bottom:12px"><button class="btn sm" id="crmNew">+ Nuevo lead</button>${nuevos.length ? `<button class="btn sm pri" id="crmAll">Procesar ${nuevos.length} nuevo${nuevos.length > 1 ? "s" : ""}</button>` : ""}<button class="btn sm ghost" id="crmCsv" style="margin-left:auto">Exportar CSV</button></div>`;
+  const q = S.crmQ, st = S.crmStage;
+  const list = leads.filter(l => (!st || l.stage === st) && (!q || [l.empresa, l.contacto, l.email, l.comercial?.nombre, l.pais].join(" ").toLowerCase().includes(q)));
+  $("#crmList").innerHTML = leads.length ? (list.map(l => `<div class="lead" data-lead="${l.id}" tabindex="0">
+      <b>${esc(l.empresa)} ${l.ejemplo ? '<span class="ej">EJEMPLO</span>' : ""}</b><span class="stg ${l.stage}">${esc(stageName(l.stage))}</span>
+      <div class="meta"><span>${esc(l.pais || "—")}·${esc(l.idioma || "")}</span><span>${l.comercial ? esc(l.comercial.nombre) : "sin asignar"}</span>${l.cual ? `<span class="score">${l.cual.puntuacion}/100</span>` : ""}${l.oferta ? `<span>${eur(l.oferta.neto)}</span>` : ""}${l.seguimientoPend ? `<span style="color:var(--c-iris)">seguimiento pendiente</span>` : ""}
+      ${l.stage === "nuevo" ? `<button class="btn sm pri" data-run="${l.id}">Procesar</button>` : ""}</div></div>`).join("") || `<div class="empty">Ningún lead coincide con el filtro.</div>`)
+    : `<div class="empty">El CRM está vacío. Añade el primer lead con <b>+ Nuevo lead</b>, pégale a ÍRIS un email de un cliente, o carga los datos de ejemplo.<div style="margin-top:10px"><button class="btn sm" id="crmSeed">Cargar ejemplos</button></div></div>`;
+  $("#crmNew").onclick = openNewLead;
+  $("#crmCsv").onclick = exportCRM;
+  $("#crmAll")?.addEventListener("click", () => nuevos.forEach(l => enqueue(l.id)));
+  $("#crmSeed")?.addEventListener("click", seedExamples);
+  $$("#crmList [data-run]").forEach(b => b.onclick = e => { e.stopPropagation(); enqueue(b.dataset.run); toast("NODO pone en cola " + S.leads[b.dataset.run].empresa); });
+  $$("#crmList [data-lead]").forEach(d => { d.onclick = () => openLeadDetail(d.dataset.lead); d.onkeydown = e => { if(e.key === "Enter") openLeadDetail(d.dataset.lead); }; });
+}
+
+/* panel de métricas */
+function renderPanel(){
+  const el = $("#p-panel"); if(!el) return;
+  const leads = Object.values(S.leads);
+  const won = leads.filter(l => l.stage === "ganada"), lost = leads.filter(l => l.stage === "perdida");
+  const open = leads.filter(l => ["oferta","revision","aprobada","enviada"].includes(l.stage));
+  const conv = (won.length + lost.length) ? won.length / (won.length + lost.length) * 100 : null;
+  const offs = leads.filter(l => l.oferta);
+  const mAvg = offs.length ? offs.reduce((s,l) => s + l.oferta.margen, 0) / offs.length : null;
+  const tts = leads.map(l => { const ev0 = (l.events || [])[0], evO = (l.events || []).find(e => /^Oferta .*redactada/.test(e.x)); return ev0 && evO ? (evO.t - ev0.t) / 1000 : null; }).filter(x => x != null && x >= 0);
+  const tAvg = tts.length ? tts.reduce((a,b) => a + b, 0) / tts.length : null;
+  const tTxt = tAvg == null ? "—" : tAvg < 120 ? Math.round(tAvg) + " s" : tAvg < 7200 ? Math.round(tAvg / 60) + " min" : (tAvg / 3600).toFixed(1).replace(".", ",") + " h";
+  const pend = Object.values(S.approvals).filter(a => a.estado === "pendiente").length;
+  const byCom = {}; leads.forEach(l => { if(l.comercial && l.oferta && l.stage !== "perdida"){ const n = l.comercial.nombre; byCom[n] = (byCom[n] || 0) + l.oferta.neto; } });
+  const maxCom = Math.max(1, ...Object.values(byCom));
+  const stCounts = STAGES.map(([s,t]) => [t, leads.filter(l => l.stage === s).length, s]); const maxSt = Math.max(1, ...stCounts.map(x => x[1]));
+  const stColor = {nuevo:"var(--c-iris)", cualificado:"var(--c-nodo)", oferta:"var(--c-tesela)", revision:"var(--amber)", aprobada:"var(--ok)", enviada:"var(--ok)", ganada:"var(--ok)", perdida:"var(--bad)"};
+  el.innerHTML = `<h2>Panel de operación</h2>
+    <div class="kpis">
+      <div class="kpi"><span>Pipeline abierto</span><b>${eur0(open.reduce((s,l) => s + (l.oferta?.neto || 0), 0))}</b><small>${open.length} ofertas vivas</small></div>
+      <div class="kpi"><span>Ganado</span><b>${eur0(won.reduce((s,l) => s + (l.oferta?.neto || 0), 0))}</b><small>${won.length} cierres</small></div>
+      <div class="kpi"><span>Conversión</span><b>${conv == null ? "—" : pct(conv)}</b><small>ganadas / cerradas</small></div>
+      <div class="kpi"><span>Margen medio</span><b style="color:${mAvg != null && mAvg < S.cfg.margenMin ? "var(--bad)" : "inherit"}">${mAvg == null ? "—" : pct(mAvg)}</b><small>mínimo ${S.cfg.margenMin} %</small></div>
+      <div class="kpi"><span>Lead → oferta</span><b>${tTxt}</b><small>tiempo medio de los agentes</small></div>
+      <div class="kpi"><span>Esperan tu firma</span><b style="color:${pend ? "var(--amber)" : "inherit"}">${pend}</b><small>en la bandeja</small></div>
+    </div>
+    <h3>Embudo por etapa</h3>
+    ${stCounts.map(([t,n,s]) => `<div class="hbar"><span>${t}</span><span class="track"><i style="width:${n / maxSt * 100}%;--bc:${stColor[s]}"></i></span><b>${n}</b></div>`).join("")}
+    <h3>Cartera por comercial</h3>
+    ${Object.keys(byCom).length ? Object.entries(byCom).sort((a,b) => b[1] - a[1]).map(([n,v]) => `<div class="hbar"><span>${esc(n)}</span><span class="track"><i style="width:${v / maxCom * 100}%"></i></span><b>${eur0(v)}</b></div>`).join("") : `<p class="note">Aún no hay ofertas asignadas.</p>`}
+    <h3>Agentes</h3>
+    ${ORDER.concat("puente").map(k => { const {l, p} = levelOf(AGST[k].xp); return `<div class="agt"><b style="color:${AG[k].hex}">${AG[k].name}</b><span class="note">NV ${l}</span><span class="note">${AGST[k].done} tareas</span><span class="xp"><i style="width:${Math.round(p * 100)}%;background:${AG[k].hex}"></i></span></div>`; }).join("")}`;
+}
+
+/* seguridad */
+function renderSec(){
+  const el = $("#p-seg");
+  if(document.activeElement && document.activeElement.id === "secIT") return;
+  const groups = byPkg(), inv = S.sec.inventory || [], planned = S.sec.planned || {};
+  const vulnPk = new Set((S.sec.findings || []).map(f => f.pkg));
+  el.innerHTML = `<h2>Seguridad · CENTINELA</h2>
+    <p class="note">${S.sec.source ? esc(S.sec.source) : "Sin informe todavía."}</p>
+    ${groups.length ? groups.map(g => `<div class="pkg"><b>${esc(g.pkg)} ${esc(g.version)}</b><span class="note">${esc(g.eco)} → ${esc(g.target || "sin versión corregida")}</span>
+        ${planned[g.pkg] ? `<span class="stg enviada">aviso ${esc(planned[g.pkg].estado)}</span><button class="btn sm" style="margin-left:auto;border-color:var(--ok);color:var(--ok)" data-applied="${esc(g.pkg)}">Marcar aplicado</button>` : `<button class="btn sm" style="margin-left:auto;border-color:var(--c-centinela);color:var(--c-centinela)" data-patch="${esc(g.pkg)}">Preparar parche</button>`}</div>
+        ${g.list.map(f => `<div class="finding" style="--sevc:${sevRank(f.severity) >= 3 ? "var(--bad)" : sevRank(f.severity) === 2 ? "var(--warn)" : "var(--line2)"}"><div class="top"><span class="sev ${esc(String(f.severity).toUpperCase())}">${esc(f.severity || "—")}</span><a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.id)}</a><span class="note">${esc(f.alias || "")}${f.fixed ? " · corregido en " + esc(f.fixed) : ""}</span></div><p>${esc(f.summary)}</p></div>`).join("")}`).join("")
+    : `<div class="empty">Sin vulnerabilidades abiertas.</div>`}
+    <h3>Inventario vigilado</h3>
+    <div class="scroll-x"><table class="tbl"><thead><tr><th>Paquete</th><th>Versión</th><th>Ecosistema</th><th>Estado</th></tr></thead><tbody>
+    ${inv.map(i => `<tr><td>${esc(i.name)}</td><td class="num">${esc(i.version)}</td><td>${esc(i.eco)}</td><td>${planned[i.name]?.estado === "aplicado" ? '<span style="color:var(--ok)">parcheado</span>' : planned[i.name] ? "parche en curso" : vulnPk.has(i.name) ? '<span style="color:var(--bad)">vulnerable</span>' : "sin hallazgos en el informe"}</td></tr>`).join("") || `<tr><td colspan="4" class="note">Sin inventario.</td></tr>`}
+    </tbody></table></div>
+    <h3>Escaneo real</h3>
+    <p class="note">Las páginas publicadas no pueden llamar a OSV.dev directamente. Ejecuta <code>osv-scanner --format json -r . &gt; informe.json</code> en tu repositorio e impórtalo aquí, o pídeme en el chat que actualice este informe.</p>
+    <label class="field"><span>EMAIL DE IT PARA LOS PARCHES</span><input id="secIT" type="email" value="${esc(S.cfg.emailIT)}" placeholder="it@tuempresa.com"></label>
+    <div class="row-actions" style="margin-top:8px"><label class="btn sm" for="osvFile" style="display:inline-block">Importar informe JSON</label><input type="file" id="osvFile" accept=".json,application/json" hidden><button class="btn sm ghost" id="secCsv">Exportar CSV</button></div>`;
+  $$("#p-seg [data-patch]").forEach(b => b.onclick = () => preparePatch(b.dataset.patch));
+  $$("#p-seg [data-applied]").forEach(b => b.onclick = () => markApplied(b.dataset.applied));
+  $("#osvFile").onchange = e => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = () => importOsv(String(r.result)); r.readAsText(f); };
+  $("#secIT").onchange = e => { S.cfg.emailIT = e.target.value.trim(); saveCfg(); toast("Email de IT guardado", "ok"); };
+  $("#secCsv").onclick = exportSec;
+}
+
+/* registro */
+function renderLogFilter(){
+  const el = $("#logFilter"); if(!el) return;
+  el.innerHTML = [["", "TODOS", "var(--synapse)"]].concat(ORDER.concat("puente").map(k => [k, AG[k].name, AG[k].hex])).map(([k,n,c]) => `<button type="button" data-lf="${k}" style="--fc:${c}" aria-pressed="${S.logFilter === k}">${n}</button>`).join("");
+  $$("#logFilter [data-lf]").forEach(b => b.onclick = () => { S.logFilter = b.dataset.lf; renderLogFilter(); renderLog(); });
+}
+function renderLog(){
+  const el = $("#logList"); if(!el) return;
+  el.innerHTML = S.log.filter(e => !S.logFilter || e.a === S.logFilter).slice(0,120).map(e => `<div class="${esc(e.c)}"><time>${hhmm(e.t)}</time><span class="a" style="color:${(AG[e.a] || {}).hex || "var(--mut)"}">${esc((AG[e.a] || {name:e.a}).name)}</span><span class="x">${esc(e.x)}</span></div>`).join("")
+    || `<div class="note">Aún no hay actividad.</div>`;
+}
+
+/* ajustes */
+function renderSettings(){
+  const el = $("#p-aj"); if(!el) return;
+  if(el.contains(document.activeElement) && document.activeElement !== document.body) return;
+  const c = S.cfg;
+  const conn = [
+    [S.cap.sample && !S.aiOff ? "on" : "warn", "IA de los agentes", S.cap.sample && !S.aiOff ? "Conectada a tu cuenta de Claude. La primera petición te pedirá permiso; consume tu uso." : "No disponible en esta vista: los agentes redactan con plantillas locales en 6 idiomas."],
+    [S.cap.db ? "on" : "warn", "CRM persistente", S.cap.db ? "Leads, ofertas, aprobaciones, niveles y registro se guardan y se comparten con quien abra la página." : "Modo local: los datos viven solo en este navegador."],
+    [S.gmailStatus === "ok" ? "on" : S.gmailStatus === "reauth" ? "off" : "warn", "Gmail", S.gmailStatus === "ok" ? "Al aprobar se crea un borrador (o se envía, según el modo). Gmail te pedirá permiso la primera vez." : S.gmailStatus === "reauth" ? "Reconecta Gmail en claude.ai → Ajustes → Conectores." : "No disponible: al aprobar podrás copiar el texto."],
+    [S.cap.downloads ? "on" : "warn", "Descargas", S.cap.downloads ? "CSV del CRM, informe de seguridad y ofertas en HTML (con tu confirmación)." : "No disponibles en esta vista: se copia el contenido."],
+    [(S.sec.findings || []).length ? "warn" : "on", "Avisos de seguridad", S.sec.source || "Sin informe"]
+  ];
+  el.innerHTML = `<h2>Ajustes</h2>
+    <h3>Conexiones</h3><div class="conn">${conn.map(([s,t,d]) => `<div class="${s}"><i></i><span><b>${t}</b><small>${esc(d)}</small></span></div>`).join("")}</div>
+    <h3>Simulación</h3>
+    <label class="check"><input type="checkbox" id="cfTraffic" ${S.traffic ? "checked" : ""}> Tráfico de prueba: entra un lead ficticio cada 75 s mientras la página está abierta</label>
+    <h3>Empresa y política</h3>
+    <form class="form" id="cfgForm">
+      <div class="grid2">
+        <label class="field"><span>EMPRESA</span><input id="cfEmp" value="${esc(c.empresa)}"></label>
+        <label class="field"><span>FIRMA DE LOS EMAILS</span><input id="cfFirma" value="${esc(c.firma)}"></label>
+        <label class="field"><span>DESCUENTO MÁXIMO %</span><input id="cfDto" type="number" min="0" max="60" value="${esc(c.maxDto)}"></label>
+        <label class="field"><span>MARGEN MÍNIMO %</span><input id="cfMar" type="number" min="0" max="90" value="${esc(c.margenMin)}"></label>
+        <label class="field"><span>LÍMITE DE CRÉDITO €</span><input id="cfLim" type="number" min="0" step="1000" value="${esc(c.limiteCredito)}"></label>
+        <label class="field"><span>SEGUIMIENTO TRAS (DÍAS)</span><input id="cfSeg" type="number" min="1" max="60" value="${esc(c.diasSeguimiento)}"></label>
+        <label class="field"><span>VALIDEZ OFERTA (DÍAS)</span><input id="cfVal" type="number" min="1" max="180" value="${esc(c.validez)}"></label>
+        <label class="field"><span>AL APROBAR</span><select id="cfModo"><option value="borrador"${c.modo === "borrador" ? " selected" : ""}>Crear borrador en Gmail</option><option value="enviar"${c.modo === "enviar" ? " selected" : ""}>Enviar desde Gmail (con confirmación)</option></select></label>
+      </div>
+      <label class="field"><span>EMAIL DE IT (PARCHES)</span><input id="cfIT" type="email" value="${esc(c.emailIT)}" placeholder="it@tuempresa.com"></label>
+      <label class="field"><span>EQUIPO COMERCIAL · nombre | email | países | idiomas</span><textarea id="cfTeam" rows="5">${esc((c.team || []).map(t => [t.nombre, t.email, (t.paises || []).join(","), (t.idiomas || []).join(",")].join(" | ")).join("\n"))}</textarea></label>
+      <label class="field"><span>TARIFA · SKU | producto | precio | coste | unidad</span><textarea id="cfCat" rows="6">${esc((c.catalog || []).map(p => [p.sku, p.nombre, p.precio, p.coste, p.unidad].join(" | ")).join("\n"))}</textarea></label>
+      <p class="note">La tarifa y el equipo de serie son ejemplos: sustitúyelos por los reales de tu empresa. Descuento por volumen automático: 4 % desde 5.000 €, 6 % desde 10.000 €, 8 % desde 20.000 € de bruto.</p>
+      <div class="row-actions"><button class="btn pri" type="submit">Guardar ajustes</button></div>
+    </form>`;
+  $("#cfTraffic").onchange = e => { S.traffic = e.target.checked; toast(S.traffic ? "Tráfico de prueba activado" : "Tráfico de prueba desactivado"); if(S.traffic) simulateLead(); };
+  $("#cfgForm").onsubmit = e => {
+    e.preventDefault();
+    const team = $("#cfTeam").value.split("\n").map(l => l.split("|").map(s => s.trim())).filter(p => p[0] && p[1]).map(p => ({nombre:p[0], email:p[1], paises:(p[2] || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean), idiomas:(p[3] || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean)}));
+    const cat = $("#cfCat").value.split("\n").map(l => l.split("|").map(s => s.trim())).filter(p => p[0] && p[1] && +p[2] > 0).map(p => ({sku:p[0], nombre:p[1], precio:+p[2], coste:+p[3] || 0, unidad:p[4] || "ud"}));
+    if(!cat.length){ toast("La tarifa necesita al menos un producto con precio.", "bad"); return; }
+    Object.assign(S.cfg, {empresa:$("#cfEmp").value.trim() || "Control", firma:$("#cfFirma").value.trim(), maxDto:+$("#cfDto").value || 0, margenMin:+$("#cfMar").value || 0,
+      limiteCredito:+$("#cfLim").value || 0, diasSeguimiento:+$("#cfSeg").value || 3, validez:+$("#cfVal").value || 30, modo:$("#cfModo").value, emailIT:$("#cfIT").value.trim(), team, catalog:cat});
+    saveCfg(); renderData(true); toast("Ajustes guardados", "ok"); addLog("nodo", "Ajustes actualizados: " + team.length + " comerciales, " + cat.length + " productos");
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); renderSettings();
+  };
+}
+
+/* ---------------- modales ---------------- */
+function openOverlay(id){ const o = $(id); o.hidden = false; setTimeout(() => { const c = $("[data-autofocus]", o) || $(".x", o); c && c.focus(); }, 30); }
+function closeOverlay(id){ $(id).hidden = true; }
+$$(".overlay").forEach(o => o.addEventListener("click", e => { if(e.target === o) o.hidden = true; }));
+
+function agentContext(k){
+  const leads = Object.values(S.leads);
+  const pend = Object.values(S.approvals).filter(a => a.estado === "pendiente");
+  return JSON.stringify({empresa:S.cfg.empresa, tu_tarea_actual:AGST[k].task, tu_nivel:levelOf(AGST[k].xp).l, tus_tareas:AGST[k].done,
+    leads:leads.slice(0,14).map(l => ({empresa:l.empresa, etapa:l.stage, pais:l.pais, comercial:l.comercial?.nombre, puntuacion:l.cual?.puntuacion, total:l.oferta?.neto, margen:l.oferta ? +l.oferta.margen.toFixed(1) : null, riesgo:l.oferta?.riesgo, faltan:l.cual?.faltan, seguimiento_pendiente:!!l.seguimientoPend})),
+    seguimientos_vencidos:dueFollowups().map(l => l.empresa), pendientes:pend.map(a => a.titulo), politica:{descuento_max:S.cfg.maxDto, margen_min:S.cfg.margenMin, limite_credito:S.cfg.limiteCredito},
+    equipo:(S.cfg.team || []).map(t => t.nombre + " (" + (t.paises || []).join(",") + ")"),
+    seguridad:byPkg().map(g => ({paquete:g.pkg, version:g.version, objetivo:g.target, hallazgos:g.list.map(f => f.id + " " + f.severity), parche:(S.sec.planned || {})[g.pkg]?.estado || null}))});
+}
+function cannedAnswer(k){
+  const leads = Object.values(S.leads), pend = Object.values(S.approvals).filter(a => a.estado === "pendiente");
+  const g = byPkg();
+  switch(k){
+    case "iris": { const due = dueFollowups(); const f = leads.filter(l => (l.cual?.faltan || []).length); return (due.length ? "Seguimientos vencidos: " + due.map(l => l.empresa).join(", ") + ". " : "") + (f.length ? "Me faltan datos en " + f.length + " leads: " + f.slice(0,3).map(l => l.empresa + " (" + l.cual.faltan.join(", ") + ")").join("; ") + "." : "Ahora mismo: " + AGST.iris.task + ". Cualifico cada lead y respondo en su idioma."); }
+    case "nodo": { const load = {}; leads.forEach(l => { if(l.comercial) load[l.comercial.nombre] = (load[l.comercial.nombre] || 0) + 1; }); return "Cola: " + QUEUE.length + " · en revisión: " + pend.length + ". Carga por comercial: " + (Object.entries(load).map(([n,c]) => n + " " + c).join(", ") || "sin asignaciones todavía") + ". Enruto por país, después por idioma y, si empatan, por menor carga."; }
+    case "tesela": { const o = leads.filter(l => l.oferta).slice(0,3); return o.length ? "Ofertas recientes: " + o.map(l => l.oferta.ref + " " + l.empresa + " " + eur(l.oferta.neto)).join("; ") + ". Aplico descuento por volumen (4 % desde 5.000 €, 6 % desde 10.000 €, 8 % desde 20.000 €) o el que pida el cliente si ÁBACO lo acepta." : "Aún no he redactado ofertas. Calculo siempre desde la tarifa oficial."; }
+    case "abaco": { const low = leads.filter(l => l.oferta && l.oferta.margen < S.cfg.margenMin); return "Política: descuento máximo " + S.cfg.maxDto + " %, margen mínimo " + S.cfg.margenMin + " %, límite de crédito " + eur0(S.cfg.limiteCredito) + ". " + (low.length ? "Con margen bajo: " + low.map(l => l.empresa + " " + pct(l.oferta.margen)).join(", ") + "." : "Ninguna oferta por debajo del mínimo."); }
+    case "archivo": return "Pipeline: " + STAGES.map(([s,t]) => t + " " + leads.filter(l => l.stage === s).length).join(" · ") + ".";
+    case "centinela": return g.length ? "Lo más urgente: " + g.slice(0,2).map(x => x.pkg + " " + x.version + " → " + (x.target || "?") + " (" + x.list.length + " avisos)").join("; ") + ". Para escanear de verdad, importa la salida de osv-scanner en la pestaña Seguridad." : "Sin vulnerabilidades abiertas. Importa un informe de osv-scanner para revisar tu código.";
+  }
+  return "";
+}
+function openAgent(k){
+  const a = AG[k], m = $("#mAgent"); flashRoom(k);
+  const {l} = levelOf(AGST[k].xp);
+  const mine = S.log.filter(e => e.a === k).slice(0,6);
+  m.style.setProperty("--mc", a.hex);
+  m.innerHTML = `<div class="m-h"><div class="portrait">${botSVG(k)}</div><div><h2 id="agName">${a.name}</h2><p>${a.lvl} · ${a.role} · ${AGST[k].st === "work" ? "trabajando" : "en espera"}</p></div><button class="x" aria-label="Cerrar">✕</button></div>
+    <div class="m-b"><div class="stats"><span class="chip">NIVEL <b>${l}</b></span><span class="chip">TAREAS <b>${AGST[k].done}</b></span><span class="chip">EXPERIENCIA <b>${AGST[k].xp}</b></span></div>
+    <div class="say" id="agSay">${esc(a.desc)}\n\nAhora: ${esc(AGST[k].task)}.</div>
+    <div class="qs">${a.qs.map(q => `<button class="qbtn" type="button">${esc(q)}</button>`).join("")}</div>
+    <form class="ask" id="agAsk"><input id="agIn" placeholder="Pregunta u ordena algo a ${a.name}…" data-autofocus><button class="btn sm pri" type="submit">Enviar</button></form>
+    ${k === "centinela" ? `<div class="row-actions"><button class="btn sm" id="agGoSeg">Abrir seguridad</button></div>` : k === "iris" ? `<div class="row-actions"><button class="btn sm" id="agGoLead">Nuevo lead / pegar email</button>${dueFollowups().length ? `<button class="btn sm" id="agFu">Preparar ${dueFollowups().length} seguimiento(s)</button>` : ""}</div>` : ""}
+    <h3 style="margin:4px 0 0;font:600 11px var(--f-mono);letter-spacing:1.5px;color:var(--dim)">ÚLTIMAS ACCIONES</h3>
+    <div class="events">${mine.map(e => `<div><time>${hhmm(e.t)}</time>${esc(e.x)}</div>`).join("") || "<div>Sin actividad todavía.</div>"}</div>
+    </div>`;
+  $(".x", m).onclick = () => closeOverlay("#ovAgent");
+  const ask = async q => {
+    const say = $("#agSay"); say.classList.add("thinking"); say.textContent = "Pensando…"; setAgent(k, "work", "Atendiéndote");
+    const prompt = `Eres ${a.name}, un agente de IA del orquestador Córtex de la empresa ${S.cfg.empresa}. Tu papel: ${a.role}. ${a.desc}
+Habla en español, en primera persona, con personalidad propia pero profesional, en 2-5 frases. Responde solo con lo que muestran los datos; si algo no está en los datos, dilo.
+Datos actuales del sistema (JSON): ${agentContext(k)}
+Pregunta del responsable humano: ${q}`;
+    const txt = await aiOr(() => cannedAnswer(k), prompt, {tier:"quick", cache:false, onText:t => { say.classList.remove("thinking"); say.textContent = t; }});
+    say.classList.remove("thinking"); say.textContent = txt; doneAgent(k); bubble(k, txt);
+  };
+  $$(".qbtn", m).forEach(b => b.onclick = () => ask(b.textContent));
+  $("#agAsk").onsubmit = e => { e.preventDefault(); const v = $("#agIn").value.trim(); if(v){ $("#agIn").value = ""; ask(v); } };
+  $("#agGoSeg")?.addEventListener("click", () => { closeOverlay("#ovAgent"); openTab("seg"); });
+  $("#agGoLead")?.addEventListener("click", () => { closeOverlay("#ovAgent"); openNewLead(); });
+  $("#agFu")?.addEventListener("click", async () => { closeOverlay("#ovAgent"); for(const x of dueFollowups()) await prepareFollowup(x.id); });
+  openOverlay("#ovAgent");
+}
+
+const PAISES = [["ES","España"],["PT","Portugal"],["FR","Francia"],["IT","Italia"],["DE","Alemania"],["BE","Bélgica"],["CH","Suiza"],["GB","Reino Unido"],["NL","Países Bajos"],["PL","Polonia"],["MX","México"],["BR","Brasil"],["US","EE. UU."]];
+const LANG_OF = {ES:"es",PT:"pt",BR:"pt",FR:"fr",BE:"fr",CH:"fr",IT:"it",DE:"de",MX:"es",GB:"en",US:"en",NL:"en",PL:"en"};
+function itemRow(sku, qty){
+  return `<div class="item"><select aria-label="Producto">${S.cfg.catalog.map(p => `<option value="${esc(p.sku)}"${p.sku === sku ? " selected" : ""}>${esc(p.nombre)} · ${eur(p.precio)}</option>`).join("")}</select><input type="number" min="1" value="${qty || 10}" aria-label="Cantidad"><button type="button" aria-label="Quitar línea">✕</button></div>`;
+}
+function wireItems(){ $$("#lfItems .item button").forEach(b => b.onclick = () => { if($$("#lfItems .item").length > 1) b.closest(".item").remove(); }); }
+function openNewLead(){
+  const m = $("#mLead"); m.style.setProperty("--mc", AG.iris.hex);
+  m.innerHTML = `<div class="m-h"><div class="portrait">${botSVG("iris")}</div><div><h2>Nuevo lead</h2><p>ÍRIS lo recibe · NODO lo pone en marcha</p></div><button class="x" aria-label="Cerrar">✕</button></div>
+    <form class="m-b" id="leadForm">
+      <label class="field"><span>¿TIENES UN EMAIL DEL CLIENTE? PÉGALO Y ÍRIS RELLENA EL FORMULARIO</span><textarea id="lfRaw" rows="3" placeholder="Pega aquí el mensaje o email recibido…"></textarea></label>
+      <div class="row-actions"><button class="btn sm" type="button" id="lfExtract">Extraer con ÍRIS</button><span class="note" id="lfNote"></span></div>
+      <div class="grid2">
+        <label class="field"><span>EMPRESA *</span><input id="lfEmp" required data-autofocus></label>
+        <label class="field"><span>CONTACTO</span><input id="lfCon"></label>
+        <label class="field"><span>EMAIL *</span><input id="lfMail" type="email" required></label>
+        <label class="field"><span>PAÍS</span><select id="lfPais">${PAISES.map(([c,n]) => `<option value="${c}">${n}</option>`).join("")}</select></label>
+        <label class="field"><span>IDIOMA</span><select id="lfIdi">${Object.entries(LANGS).map(([c,n]) => `<option value="${c}">${n}</option>`).join("")}</select></label>
+        <label class="field"><span>DESCUENTO PEDIDO %</span><input id="lfDto" type="number" min="0" max="80" value="0"></label>
+      </div>
+      <div class="field"><span>PRODUCTOS</span><div class="items" id="lfItems">${itemRow(S.cfg.catalog[0].sku, 10)}</div><div><button class="btn sm ghost" type="button" id="lfAdd" style="margin-top:6px">+ Añadir producto</button></div></div>
+      <label class="field"><span>NOTAS</span><textarea id="lfNotas" rows="2" placeholder="Necesidad, plazo, contexto…"></textarea></label>
+      <label class="check"><input type="checkbox" id="lfContact" checked> ÍRIS redacta también un primer email de contacto</label>
+      <div class="row-actions"><button class="btn pri" type="submit">Crear lead${S.autonomy === "supervisado" ? " y procesar" : ""}</button><button class="btn ghost" type="button" id="lfCancel">Cancelar</button></div>
+    </form>`;
+  $(".x", m).onclick = () => closeOverlay("#ovLead"); $("#lfCancel").onclick = () => closeOverlay("#ovLead");
+  wireItems();
+  $("#lfAdd").onclick = () => { $("#lfItems").insertAdjacentHTML("beforeend", itemRow(S.cfg.catalog[1]?.sku || S.cfg.catalog[0].sku, 1)); wireItems(); };
+  $("#lfPais").onchange = e => { $("#lfIdi").value = LANG_OF[e.target.value] || "en"; };
+  $("#lfExtract").onclick = async () => {
+    const raw = $("#lfRaw").value.trim(); if(!raw){ $("#lfRaw").focus(); return; }
+    const note = $("#lfNote"); note.textContent = "ÍRIS está leyendo…"; setAgent("iris", "work", "Leyendo un email pegado");
+    const prompt = `Extrae los datos de este mensaje de un posible cliente y responde SOLO con JSON:
+{"empresa": str|null, "contacto": str|null, "email": str|null, "pais": código ISO de 2 letras|null, "idioma": "es|en|fr|it|pt|de", "items": [{"sku": uno de [${S.cfg.catalog.map(p => '"' + p.sku + '"').join(",")}], "cantidad": número}], "descuento": número|null, "notas": "resumen de la necesidad y el plazo en español"}
+Tarifa: ${S.cfg.catalog.map(p => p.sku + " = " + p.nombre).join("; ")}
+Mensaje:
+${raw.slice(0, 6000)}`;
+    try{
+      const r = await ai(prompt, {json:true, tier:"quick"});
+      if(r.empresa) $("#lfEmp").value = r.empresa; if(r.contacto) $("#lfCon").value = r.contacto; if(r.email) $("#lfMail").value = r.email;
+      if(r.pais && PAISES.some(p => p[0] === String(r.pais).toUpperCase())) $("#lfPais").value = String(r.pais).toUpperCase();
+      if(r.idioma && LANGS[r.idioma]) $("#lfIdi").value = r.idioma;
+      const its = (Array.isArray(r.items) ? r.items : []).filter(i => S.cfg.catalog.some(p => p.sku === i.sku) && +i.cantidad > 0);
+      if(its.length){ $("#lfItems").innerHTML = its.map(i => itemRow(i.sku, Math.round(+i.cantidad))).join(""); wireItems(); }
+      if(r.descuento != null && +r.descuento >= 0) $("#lfDto").value = +r.descuento;
+      if(r.notas) $("#lfNotas").value = r.notas;
+      note.textContent = "Listo. Revisa los campos."; doneAgent("iris");
+    }catch(e){
+      const mail = raw.match(/[^\s<>@]+@[^\s<>@]+\.[a-z]{2,}/i); if(mail) $("#lfMail").value = mail[0];
+      const qty = raw.match(/(\d{1,5})\s*(uds|unidades|pcs|pz|pezzi|units|lectores|cámaras|licencias)/i); if(qty){ const q = $("#lfItems .item input"); if(q) q.value = qty[1]; }
+      $("#lfNotas").value = raw.slice(0, 400);
+      note.textContent = "Sin IA en esta vista: he copiado el email y la cantidad que encontré."; setAgent("iris", "idle", "en espera");
+    }
+  };
+  $("#leadForm").onsubmit = e => {
+    e.preventDefault();
+    const items = $$("#lfItems .item").map(r => ({sku:$("select", r).value, qty:Math.max(1, Math.round(+$("input", r).value || 1))}));
+    const L = {id:uid("L"), creado:Date.now(), empresa:$("#lfEmp").value.trim(), contacto:$("#lfCon").value.trim(), email:$("#lfMail").value.trim(),
+      pais:$("#lfPais").value, idioma:$("#lfIdi").value, items, sku:items[0].sku, cantidad:items[0].qty, dtoPedido:+$("#lfDto").value || 0,
+      notas:$("#lfNotas").value.trim(), primerContacto:$("#lfContact").checked, stage:"nuevo", events:[]};
+    createLead(L, "Lead recibido");
+    closeOverlay("#ovLead");
+  };
+  openOverlay("#ovLead");
+}
+function createLead(L, why){
+  ev(L, "ÍRIS", why); S.leads[L.id] = L; saveLead(L); renderData();
+  addLog("iris", "Nuevo lead: " + L.empresa + " (" + L.pais + ")"); flashRoom("iris");
+  if(S.autonomy === "supervisado") enqueue(L.id); else toast("Lead creado. Púlsalo en el CRM para procesarlo.");
+}
+function openLeadDetail(id){
+  const L = S.leads[id]; if(!L) return; const m = $("#mLead"); m.style.setProperty("--mc", AG.archivo.hex);
+  const o = L.oferta;
+  m.innerHTML = `<div class="m-h"><div class="portrait">${botSVG("archivo")}</div><div><h2>${esc(L.empresa)}</h2><p>${esc(L.id)} · ${esc(stageName(L.stage))}${L.ejemplo ? " · EJEMPLO" : ""}</p></div><button class="x" aria-label="Cerrar">✕</button></div>
+    <div class="m-b">
+      <div class="kv"><span>Contacto</span><b>${esc(L.contacto || "—")}</b><span>Email</span><b>${esc(L.email || "—")}</b><span>País · idioma</span><b>${esc(L.pais)} · ${esc(LANGS[L.idioma] || L.idioma)}</b>
+        <span>Comercial</span><b>${L.comercial ? esc(L.comercial.nombre + " · " + L.comercial.email) : "sin asignar"}</b>
+        ${L.cual ? `<span>Cualificación</span><b>${L.cual.puntuacion}/100 · urgencia ${esc(L.cual.urgencia)} · ${esc(L.cual.resumen)}</b>` : ""}
+        ${L.enviadaEn ? `<span>Oferta enviada</span><b>${fecha(L.enviadaEn)}${L.seguimientos ? " · " + L.seguimientos + " seguimiento(s)" : ""}</b>` : ""}
+        <span>Notas</span><b>${esc(L.notas || "—")}</b></div>
+      ${o ? `<div class="scroll-x"><table class="tbl"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr></thead><tbody>
+        ${o.lineas.map(l => `<tr><td>${esc(l.nombre)}<br><span class="note">${esc(l.sku)}</span></td><td class="num">${l.qty}</td><td class="num">${eur(l.precio)}</td><td class="num">${eur(l.importe)}</td></tr>`).join("")}
+        <tr><td colspan="3">Descuento ${o.dto}%</td><td class="num">−${eur(o.descuento)}</td></tr><tr><td colspan="3"><b>Total neto · ${esc(o.ref || "")}</b></td><td class="num"><b>${eur(o.neto)}</b></td></tr>
+        <tr><td colspan="3" class="note">Margen · riesgo ${esc(o.riesgo || "—")}</td><td class="num">${pct(o.margen)}</td></tr></tbody></table></div><p class="note">Condiciones: ${esc(o.condiciones || "—")}</p>` : ""}
+      <h3 style="margin:4px 0 0">Historial</h3>
+      <div class="events">${(L.events || []).slice().reverse().map(e => `<div><time>${fecha(e.t)}</time><b>${esc(e.a)}</b> · ${esc(e.x)}</div>`).join("") || "<div>Sin eventos.</div>"}</div>
+      <div class="row-actions">
+        ${L.stage === "nuevo" ? `<button class="btn pri" id="ldRun">Procesar</button>` : `<button class="btn" id="ldRun">Reprocesar</button>`}
+        ${["enviada","aprobada"].includes(L.stage) ? `<button class="btn sm" id="ldFu" style="border-color:var(--c-iris);color:var(--c-iris)">Preparar seguimiento</button>` : ""}
+        ${o ? `<button class="btn sm ghost" id="ldDl">Descargar oferta</button>` : ""}
+        ${["enviada","aprobada","revision","oferta"].includes(L.stage) ? `<button class="btn sm" id="ldWon" style="border-color:var(--ok);color:var(--ok)">Marcar ganada</button><button class="btn sm" id="ldLost">Marcar perdida</button>` : ""}
+        <button class="btn sm danger" id="ldDel">Eliminar</button>
+      </div>
+      <div id="ldConfirm"></div>
+    </div>`;
+  $(".x", m).onclick = () => closeOverlay("#ovLead");
+  $("#ldRun").onclick = () => { closeOverlay("#ovLead"); if(L.stage !== "nuevo"){ L.stage = "nuevo"; L.contactoHecho = true; ev(L, "NODO", "Reprocesado a petición del responsable"); saveLead(L); } enqueue(L.id); };
+  $("#ldFu")?.addEventListener("click", () => { closeOverlay("#ovLead"); prepareFollowup(id); });
+  $("#ldDl")?.addEventListener("click", () => exportOffer(id));
+  $("#ldWon")?.addEventListener("click", () => { L.stage = "ganada"; ev(L, "ARCHIVO", "Marcado como ganado"); saveLead(L); addLog("archivo", L.empresa + " ganado · " + eur(L.oferta?.neto || 0), "ok"); flashRoom("archivo", true); gainXP("archivo"); renderData(); openLeadDetail(id); });
+  $("#ldLost")?.addEventListener("click", () => { L.stage = "perdida"; ev(L, "ARCHIVO", "Marcado como perdido"); saveLead(L); addLog("archivo", L.empresa + " perdido", "warn"); renderData(); openLeadDetail(id); });
+  $("#ldDel").onclick = () => {
+    $("#ldConfirm").innerHTML = `<div class="confirm">Se borrará ${esc(L.empresa)} y su historial del CRM. <button class="btn sm danger" id="ldDelOk">Borrar definitivamente</button><button class="btn sm ghost" id="ldDelNo">Cancelar</button></div>`;
+    $("#ldDelNo").onclick = () => $("#ldConfirm").innerHTML = "";
+    $("#ldDelOk").onclick = () => { delete S.leads[id]; delDoc("leads/" + id); addLog("archivo", "Lead eliminado: " + L.empresa, "warn"); renderData(); closeOverlay("#ovLead"); };
+  };
+  openOverlay("#ovLead");
+}
+
+/* ---------------- NODO: órdenes en lenguaje natural ---------------- */
+async function command(text){
+  const btn = $("#cmdBtn"); btn.disabled = true; setAgent("nodo", "work", "Interpretando tu orden"); bubble("nodo", "«" + text + "»");
+  const pk = byPkg().map(g => g.pkg);
+  const prompt = `Eres NODO, el orquestador de agentes de ${S.cfg.empresa}. Convierte la orden del responsable en UNA acción. Responde SOLO con JSON:
+{"accion": "crear_lead" | "procesar" | "parche" | "seguimientos" | "estado" | "responder", "lead": {"empresa":str,"contacto":str|null,"email":str|null,"pais":"ISO2"|null,"idioma":"es|en|fr|it|pt|de"|null,"items":[{"sku":str,"cantidad":número}],"descuento":número|null,"notas":str|null} | null, "objetivo": "nombre de empresa o paquete al que se refiere" | null, "respuesta": "respuesta breve en español para el responsable"}
+Acciones: crear_lead (alta de un cliente potencial), procesar (lanzar el flujo de un lead existente o "todos" los nuevos), parche (preparar aviso de parche de un paquete vulnerable), seguimientos (preparar emails de seguimiento de ofertas sin respuesta), estado (resumen del sistema), responder (cualquier otra pregunta).
+Tarifa: ${S.cfg.catalog.map(p => p.sku + " = " + p.nombre).join("; ")}
+Leads existentes: ${Object.values(S.leads).map(l => l.empresa + " [" + l.stage + "]").join("; ") || "ninguno"}
+Paquetes vulnerables: ${pk.join(", ") || "ninguno"}
+Estado: ${agentContext("nodo")}
+Orden: ${text}`;
+  try{
+    const r = await ai(prompt, {json:true, tier:"quick", cache:false});
+    const acc = r.accion;
+    if(r.respuesta) bubble("nodo", r.respuesta, 7000);
+    if(acc === "crear_lead" && r.lead && r.lead.empresa){
+      const x = r.lead, p = String(x.pais || "ES").toUpperCase();
+      let items = (Array.isArray(x.items) ? x.items : []).filter(i => S.cfg.catalog.some(c => c.sku === i.sku) && +i.cantidad > 0).map(i => ({sku:i.sku, qty:Math.round(+i.cantidad)}));
+      if(!items.length) items = [{sku:S.cfg.catalog[0].sku, qty:1}];
+      const L = {id:uid("L"), creado:Date.now(), empresa:x.empresa, contacto:x.contacto || "", email:x.email || "", pais:p, idioma:LANGS[x.idioma] ? x.idioma : (LANG_OF[p] || "es"),
+        items, sku:items[0].sku, cantidad:items[0].qty, dtoPedido:+x.descuento || 0, notas:x.notas || text, primerContacto:true, stage:"nuevo", events:[]};
+      if(!L.email) toast("Lead creado sin email: complétalo en la bandeja antes de aprobar.", "warn");
+      createLead(L, "Alta por orden: «" + text.slice(0,120) + "»");
+    } else if(acc === "procesar"){
+      const obj = String(r.objetivo || "").toLowerCase();
+      const ls = Object.values(S.leads).filter(l => obj && obj !== "todos" ? l.empresa.toLowerCase().includes(obj) : l.stage === "nuevo");
+      if(ls.length){ ls.forEach(l => { if(l.stage !== "nuevo"){ l.stage = "nuevo"; l.contactoHecho = true; saveLead(l); } enqueue(l.id); }); addLog("nodo", "En cola por orden: " + ls.map(l => l.empresa).join(", ")); }
+      else toast("No encuentro ese lead.", "warn");
+    } else if(acc === "parche"){
+      const obj = String(r.objetivo || "").toLowerCase(); const g = byPkg().find(x => x.pkg.toLowerCase() === obj || obj.includes(x.pkg.toLowerCase())) || (obj ? null : byPkg()[0]);
+      if(g) preparePatch(g.pkg); else toast("No encuentro ese paquete en el informe de seguridad.", "warn");
+    } else if(acc === "seguimientos"){
+      const obj = String(r.objetivo || "").toLowerCase();
+      const ls = obj ? Object.values(S.leads).filter(l => l.empresa.toLowerCase().includes(obj) && l.oferta) : dueFollowups();
+      if(ls.length){ for(const l of ls) await prepareFollowup(l.id); } else toast("No hay seguimientos vencidos.", "");
+    } else { toast(r.respuesta || "Hecho.", ""); }
+    addLog("nodo", "Orden: «" + text.slice(0,80) + "» → " + (acc || "?"));
+  }catch(e){
+    const t = text.toLowerCase();
+    if(/parche|cve|vulnerab/.test(t)){ const g = byPkg().find(x => t.includes(x.pkg.toLowerCase())) || byPkg()[0]; if(g) preparePatch(g.pkg); }
+    else if(/seguimiento/.test(t)){ for(const l of dueFollowups()) await prepareFollowup(l.id); }
+    else if(/procesa|lanza|todos/.test(t)){ Object.values(S.leads).filter(l => l.stage === "nuevo").forEach(l => enqueue(l.id)); }
+    else if(/lead|cliente|oferta/.test(t)){ openNewLead(); setTimeout(() => { const r = $("#lfRaw"); if(r) r.value = text; }, 50); }
+    else bubble("nodo", cannedAnswer("nodo"), 7000);
+    if(e && e.code !== "unavailable") toast("NODO sin IA (" + (e.code || "error") + "): usé reglas locales.", "warn");
+  }finally{ btn.disabled = false; doneAgent("nodo"); }
+}
+
+/* ---------------- ejemplos y tráfico simulado ---------------- */
+const REF_FINDINGS = [
+  {id:"GHSA-rv95-896h-c2vc", alias:"CVE-2024-29041", pkg:"express", eco:"npm", version:"4.17.1", severity:"MODERATE", summary:"Redirección abierta con URLs malformadas en res.location/res.redirect.", fixed:"4.19.2"},
+  {id:"GHSA-qw6h-vgh9-j6wx", alias:"CVE-2024-43796", pkg:"express", eco:"npm", version:"4.17.1", severity:"LOW", summary:"XSS a través de response.redirect() con entrada no saneada.", fixed:"4.20.0"},
+  {id:"GHSA-35jh-r3h4-6jhm", alias:"CVE-2021-23337", pkg:"lodash", eco:"npm", version:"4.17.20", severity:"HIGH", summary:"Inyección de comandos a través de la función template.", fixed:"4.17.21"},
+  {id:"GHSA-29mw-wpgm-hmr9", alias:"CVE-2020-28500", pkg:"lodash", eco:"npm", version:"4.17.20", severity:"MODERATE", summary:"Denegación de servicio por expresión regular (ReDoS) en toNumber, trim y trimEnd.", fixed:"4.17.21"},
+  {id:"GHSA-cph5-m8f7-6c5x", alias:"CVE-2021-3749", pkg:"axios", eco:"npm", version:"0.21.1", severity:"HIGH", summary:"Denegación de servicio por expresión regular (ReDoS) en trim.", fixed:"0.21.2"},
+  {id:"GHSA-wf5p-g6vw-rhxx", alias:"CVE-2023-45857", pkg:"axios", eco:"npm", version:"0.21.1", severity:"MODERATE", summary:"El token XSRF-TOKEN se envía también a hosts de terceros.", fixed:"0.28.0"},
+  {id:"GHSA-qwph-4952-7xr6", alias:"CVE-2022-23540", pkg:"jsonwebtoken", eco:"npm", version:"8.5.1", severity:"MODERATE", summary:"Verificación de firma eludible por el algoritmo inseguro por defecto en jwt.verify().", fixed:"9.0.0"}
+];
+const POOL = [
+  {empresa:"Ferralia Estructuras S.A.", contacto:"Nuria Gil", pais:"ES", dom:"ferralia", items:[["CTL-AC200",30],["CTL-PAN8",4]], dto:5, notas:"Control de accesos para dos obras en Zaragoza. Plazo: marzo."},
+  {empresa:"Porto Têxteis Lda.", contacto:"Rui Costa", pais:"PT", dom:"portotexteis", items:[["CTL-CAM4K",16]], dto:0, notas:"Câmaras para o armazém de Maia. Urgente."},
+  {empresa:"Brenner Logistik GmbH", contacto:"Jonas Weber", pais:"DE", dom:"brenner-logistik", items:[["CTL-SW24",6],["CTL-CAM4K",40]], dto:8, notas:"Neues Lager in Augsburg, Inbetriebnahme bis April."},
+  {empresa:"Clinique Saint-Roch", contacto:"Élodie Martin", pais:"FR", dom:"clinique-stroch", items:[["CTL-AC200",60],["CTL-CLOUD",60]], dto:12, notas:"Contrôle d'accès des blocs opératoires avant juin."},
+  {empresa:"Milano Retail Group", contacto:"Luca Bianchi", pais:"IT", dom:"milanoretail", items:[["CTL-CAM4K",80]], dto:15, notas:"12 negozi, installazione entro giugno."},
+  {empresa:"Northbridge Offices Ltd", contacto:"Sarah Collins", pais:"GB", dom:"northbridge-offices", items:[["CTL-PAN8",10],["CTL-AC200",80]], dto:0, notas:"Refurbishment of three office floors by May."},
+  {empresa:"Grupo Tlaloc Industrial", contacto:"Andrea Ríos", pais:"MX", dom:"tlaloc-industrial", items:[["CTL-CAM4K",30],["CTL-SW24",3]], dto:10, notas:"Planta en Querétaro. Piden pago a 60 días."},
+  {empresa:"Hotel Atlântico Rio", contacto:"Marcos Souza", pais:"BR", dom:"hotelatlantico", items:[["CTL-CLOUD",200]], dto:20, notas:"Gestão de acesso de 200 quartos até agosto."}
+];
+let poolN = Math.floor(Math.random() * POOL.length);
+function simulateLead(){
+  const x = POOL[poolN++ % POOL.length];
+  const items = x.items.filter(([s]) => S.cfg.catalog.some(c => c.sku === s)).map(([sku, qty]) => ({sku, qty}));
+  if(!items.length) items.push({sku:S.cfg.catalog[0].sku, qty:10});
+  const L = {id:uid("L"), creado:Date.now(), empresa:x.empresa, contacto:x.contacto, email:"compras@" + x.dom + ".example", pais:x.pais, idioma:LANG_OF[x.pais] || "en",
+    items, sku:items[0].sku, cantidad:items[0].qty, dtoPedido:x.dto, notas:x.notas, primerContacto:true, stage:"nuevo", ejemplo:true, events:[]};
+  createLead(L, "Lead simulado (ejemplo)");
+}
+function seedExamples(){
+  const now = Date.now();
+  const ex = [
+    {empresa:"Logística Duero S.L.", contacto:"Raúl Martín", email:"compras@duero-logistica.example", pais:"ES", idioma:"es", sku:"CTL-AC200", cantidad:40, dtoPedido:12, notas:"Control de accesos para la nueva nave de Valladolid. Quieren tenerlo instalado antes de enero; preguntan también por cámaras."},
+    {empresa:"Sicilia Packaging S.r.l.", contacto:"Giulia Russo", email:"acquisti@siciliapack.example", pais:"IT", idioma:"it", sku:"CTL-CAM4K", cantidad:24, dtoPedido:0, notas:"Videosorveglianza perimetrale per lo stabilimento di Catania."},
+    {empresa:"Hôtel Lumière Lyon", contacto:"Antoine Perrin", email:"direction@hotel-lumiere.example", pais:"FR", idioma:"fr", sku:"CTL-CLOUD", cantidad:120, dtoPedido:15, notas:"Gestion des accès des 120 chambres via la plateforme cloud. Urgent, ouverture en février."}
+  ];
+  ex.forEach((x, i) => { const L = {...x, id:"L-EJ" + (i + 1), creado:now - (i + 1) * 60000, primerContacto:true, stage:"nuevo", ejemplo:true, events:[{t:now - (i + 1) * 60000, a:"ÍRIS", x:"Lead recibido (ejemplo)"}]}; S.leads[L.id] = L; saveLead(L); });
+  if(!(S.sec.inventory || []).length){
+    S.sec = {inventory:[{eco:"npm", name:"express", version:"4.17.1"},{eco:"npm", name:"lodash", version:"4.17.20"},{eco:"npm", name:"axios", version:"0.21.1"},{eco:"npm", name:"jsonwebtoken", version:"8.5.1"}],
+      findings:REF_FINDINGS.map(f => ({...f, url:"https://osv.dev/vulnerability/" + f.id})), scannedAt:now,
+      source:"Informe de referencia con avisos públicos (GHSA/CVE) recopilado el 21/10/2026, no escaneado en vivo: verifica cada aviso en osv.dev o importa tu propio informe.", planned:{}};
+    saveSec();
+  }
+  if(S.cap.db) saveCfg();
+  addLog("archivo", "Cargados 3 leads de ejemplo"); renderData();
+}
+
+/* ---------------- pestañas, autonomía, atajos ---------------- */
+function openTab(name){
+  $$(".tabs [role=tab]").forEach(t => t.setAttribute("aria-selected", t.dataset.pane === name ? "true" : "false"));
+  $$(".pane").forEach(p => p.hidden = p.id !== "p-" + name);
+  if(name === "panel") renderPanel();
+  if(innerWidth <= 1140) $(".console").scrollIntoView({behavior:"smooth", block:"start"});
+}
+$$(".tabs [role=tab]").forEach(t => t.onclick = () => openTab(t.dataset.pane));
+$("#autoSup").onclick = () => { S.autonomy = "supervisado"; $("#autoSup").setAttribute("aria-pressed","true"); $("#autoMan").setAttribute("aria-pressed","false"); toast("Autonomía supervisada: los agentes trabajan solos hasta tu revisión"); };
+$("#autoMan").onclick = () => { S.autonomy = "manual"; $("#autoMan").setAttribute("aria-pressed","true"); $("#autoSup").setAttribute("aria-pressed","false"); toast("Autonomía manual: cada lead espera a que pulses Procesar"); };
+$("#newLeadBtn").onclick = openNewLead;
+$("#simBtn").onclick = simulateLead;
+$("#sndBtn").onclick = () => {
+  S.sound = !S.sound; $("#sndBtn").setAttribute("aria-pressed", String(S.sound));
+  if(S.sound && !AC){ try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ S.sound = false; $("#sndBtn").setAttribute("aria-pressed", "false"); toast("Este navegador no permite sonido aquí.", "warn"); return; } }
+  if(S.sound){ if(AC.resume) AC.resume(); ORDER.forEach((k, i) => setTimeout(() => beep(k), i * 90)); }
+};
+$("#cmdForm").onsubmit = e => { e.preventDefault(); const v = $("#cmdIn").value.trim(); if(v){ $("#cmdIn").value = ""; command(v); } };
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape"){ $$(".overlay").forEach(o => o.hidden = true); return; }
+  if(e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target; if(t && t.closest && t.closest("input,textarea,select,[contenteditable]")) return;
+  if($$(".overlay").some(o => !o.hidden)) return;
+  if(e.key === "/"){ e.preventDefault(); $("#cmdIn").focus(); }
+  else if(e.key === "n" || e.key === "N"){ e.preventDefault(); openNewLead(); }
+  else if(e.key === "s" || e.key === "S"){ e.preventDefault(); simulateLead(); }
+  else if(/^[1-6]$/.test(e.key)) openTab(TABS[+e.key - 1]);
+});
+function toast(t, cls = ""){ const d = document.createElement("div"); d.className = "toast " + cls; d.textContent = t; $("#toasts").appendChild(d); setTimeout(() => d.remove(), 5200); }
+function tickClock(){
+  const now = new Date(), h = now.getHours(), c = $("#clock"), sf = $("#surface");
+  if(c) c.textContent = now.toLocaleString("es-ES", {weekday:"short", hour:"2-digit", minute:"2-digit"});
+  if(sf){ sf.classList.toggle("day", h >= 8 && h < 19); sf.classList.toggle("dusk", (h >= 19 && h < 21) || (h >= 6 && h < 8)); }
+}
+setInterval(tickClock, 30000);
+setInterval(ambient, 8000);
+setInterval(() => { if(S.traffic && !document.hidden && !RUNNING && !QUEUE.length) simulateLead(); }, 75000);
+window.addEventListener("resize", () => { const k = ORDER.concat("puente").find(x => AGST[x].st !== "idle") || "iris"; moveCapsule(k); });
+
+/* ---------------- fondo: red neuronal ---------------- */
+function startNeural(){
+  const cv = $("#neural"), ctx = cv.getContext("2d"); let N = [], W = 0, H = 0, dpr = 1;
+  const cols = ORDER.map(k => AG[k].hex);
+  function size(){ dpr = Math.min(2, devicePixelRatio || 1); W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; cv.style.width = innerWidth + "px"; cv.style.height = innerHeight + "px";
+    const n = Math.min(70, Math.floor(innerWidth * innerHeight / 24000)); N = Array.from({length:n}, (_, i) => ({x:Math.random() * W, y:Math.random() * H, vx:(Math.random() - .5) * .18 * dpr, vy:(Math.random() - .5) * .18 * dpr, r:(1 + Math.random() * 1.8) * dpr, c:cols[i % cols.length], p:Math.random() * 6.28})); }
+  function step(){
+    const R = 140 * dpr; ctx.clearRect(0, 0, W, H);
+    for(const p of N){ if(!REDUCED){ p.x += p.vx; p.y += p.vy; p.p += .02; } if(p.x < 0 || p.x > W) p.vx *= -1; if(p.y < 0 || p.y > H) p.vy *= -1; }
+    for(let i = 0; i < N.length; i++) for(let j = i + 1; j < N.length; j++){ const a = N[i], b = N[j], dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+      if(d2 < R * R){ ctx.strokeStyle = "rgba(127,190,230," + ((1 - Math.sqrt(d2) / R) * .16) + ")"; ctx.lineWidth = dpr * .8; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); } }
+    for(const p of N){ ctx.globalAlpha = .55 + .35 * Math.sin(p.p); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.29); ctx.fill(); ctx.globalAlpha = .14; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 3, 0, 6.29); ctx.fill(); ctx.globalAlpha = 1; }
+    if(!REDUCED) requestAnimationFrame(step);
+  }
+  size(); addEventListener("resize", size); requestAnimationFrame(step);
+}
+
+boot();
+</script>
+
+</body></html>
